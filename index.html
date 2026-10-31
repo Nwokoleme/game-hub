@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Game Chat Hub - by Jeffrey Nwokoleme</title>
+<title>Jolt - by Jeffrey Nwokoleme</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#000000">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Game Chat Hub">
-<link rel="apple-touch-icon" href="icon-192-1.png">
-<link rel="icon" href="icon-192-1.png">
+<meta name="apple-mobile-web-app-title" content="Jolt">
+<link rel="apple-touch-icon" href="icon-192-1.png?v=4">
+<link rel="icon" href="icon-192-1.png?v=4">
 <script>window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();window.__ip=e;});</script>
 <style>
 :root{--bg:#000;--card:#16181c;--tx:#e7e9ea;--mut:#71767b;--line:#2f3336;--ac:#1d9bf0;--inp:#202327}
@@ -54,6 +54,7 @@ button:active{transform:scale(.96)}
 .info{flex:1;min-width:0}
 .info b{display:block;word-wrap:break-word}
 .link{cursor:pointer}
+.vtick{display:inline-block;background:#1d9bf0;color:#fff;width:16px;height:16px;line-height:16px;text-align:center;border-radius:50%;font-size:11px;margin-left:5px;font-weight:bold;vertical-align:middle}
 .badge{display:inline-block;background:#f4b400;color:#000;font-size:10px;padding:2px 7px;border-radius:10px;margin-left:6px;font-weight:bold}
 .strip{display:flex;gap:12px;overflow-x:auto;padding:6px 2px 10px}
 .strip .it{flex:none;text-align:center;font-size:11px;color:var(--mut);width:56px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -243,14 +244,54 @@ nav button.on svg{stroke-width:2.7}
 #gameModal{position:fixed;inset:0;z-index:66;background:#0b0d14}
 #gameModal.hidden{display:none}
 #gameModal iframe{width:100%;height:100%;border:0;display:block}
+
+/* ===== JOLT PART 1: better feed ===== */
+.post{padding:14px 0 10px;border-bottom:1px solid var(--line);position:relative}
+.post .phead{padding:0 4px 10px;position:relative}
+.post .phead .av{width:42px;height:42px;box-shadow:0 0 0 2px var(--bg),0 0 0 4px #a855f7}
+.post .phead .info b{font-size:15px}
+.dots{width:auto;margin:0;padding:4px 10px;background:transparent;border:none;color:var(--tx);font-size:22px;line-height:1}
+.pmenu{position:absolute;right:6px;top:44px;z-index:8;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.45);overflow:hidden;min-width:150px}
+.pmenu.hidden{display:none}
+.pmenu div{padding:13px 16px;font-size:15px}
+.pmenu div+div{border-top:1px solid var(--line)}
+.pmenu .red{color:#f4212e}
+.pbody{position:relative;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+.post .pbody img{display:block;width:calc(100% + 24px);max-width:none;margin:0 -12px;border-radius:0;border:none;max-height:600px;object-fit:cover}
+.pbody.textOnly{background:linear-gradient(135deg,#1d9bf0 0%,#a855f7 55%,#ec4899 100%);border-radius:16px;padding:34px 22px;min-height:150px;display:flex;align-items:center;justify-content:center}
+.pbody .bigText{margin:0;color:#fff;font-size:21px;font-weight:700;line-height:1.35;text-align:center;white-space:pre-wrap;word-wrap:break-word;text-shadow:0 1px 6px rgba(0,0,0,.25)}
+.heartPop{position:absolute;left:50%;top:50%;font-size:92px;transform:translate(-50%,-50%) scale(0);opacity:0;pointer-events:none;filter:drop-shadow(0 4px 14px rgba(0,0,0,.5))}
+.heartPop.go{animation:hpop .8s ease-out}
+@keyframes hpop{0%{transform:translate(-50%,-50%) scale(0);opacity:0}20%{transform:translate(-50%,-50%) scale(1.2);opacity:1}40%{transform:translate(-50%,-50%) scale(.95);opacity:1}100%{transform:translate(-50%,-60%) scale(1);opacity:0}}
+.acts{display:flex;align-items:center;gap:4px;padding:8px 0 0}
+.ibtn{width:auto;margin:0;padding:6px 10px;background:transparent;border:none;color:var(--tx);display:flex;align-items:center;gap:6px;font-size:22px;cursor:pointer}
+.ibtn:active{transform:scale(1.25)}
+.ibtn.liked{color:#f4212e}
+.ibtn.liked svg{fill:#f4212e;stroke:#f4212e;animation:likepulse .35s ease}
+.ibtn.fireBtn{font-size:24px;filter:grayscale(1);opacity:.8}
+.ibtn.fireBtn.on{filter:none;opacity:1;text-shadow:0 0 12px rgba(255,140,0,.8)}
+.ibtn.shareBtn{margin-left:auto}
+@keyframes likepulse{0%{transform:scale(.6)}60%{transform:scale(1.3)}100%{transform:scale(1)}}
+.counts{padding:2px 6px 0;font-weight:700;font-size:14.5px}
+.caption{padding:4px 6px 0;font-size:15px;line-height:1.4;white-space:pre-wrap;word-wrap:break-word}
+.viewCmts{padding:5px 6px 0;color:var(--mut);font-size:14px;cursor:pointer}
+.post .cmts{margin:8px 4px 0;padding:10px 0 0;border-top:1px solid var(--line)}
+
+/* ===== JOLT: loading screen so sign-in page does not flash ===== */
+#bootLoad{position:fixed;inset:0;z-index:99;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px}
+#bootLoad img{width:96px;height:96px;border-radius:22px;box-shadow:0 8px 30px rgba(168,85,247,.35)}
+.bootDots{display:flex;gap:8px}
+.bootDots i{width:10px;height:10px;border-radius:50%;background:var(--ac);animation:bootb 1s infinite ease-in-out}
+.bootDots i:nth-child(2){animation-delay:.15s}.bootDots i:nth-child(3){animation-delay:.3s}
+@keyframes bootb{0%,80%,100%{transform:scale(.5);opacity:.4}40%{transform:scale(1);opacity:1}}
 </style>
 </head>
 <body>
 
 <div class="bar">
-  <div class="logo">🎮 Game Chat Hub</div>
+  <div class="logo">⚡ Jolt</div>
   <div class="right">
-    <div class="ownerTag">👑 Jeffrey Nwokoleme</div>
+
     <button id="themeBtn">🌓</button>
   </div>
 </div>
@@ -258,13 +299,14 @@ nav button.on svg{stroke-width:2.7}
 <div class="wrap">
   <p id="msg"></p>
 
-  <div id="authBox">
+  <div id="bootLoad"><img src="icon-192-1.png?v=4" alt=""><div class="bootDots"><i></i><i></i><i></i></div></div>
+  <div id="authBox" class="hidden">
     <div class="hero">
       <h1>Play. Connect.<br>Dominate.</h1>
-      <p>Games, lifestyle and fun. Find Call of Duty and Free Fire players, post, chat, and play together.</p>
+      <p>Games, lifestyle and fun. Meet new people, post, chat, and play together.</p>
       <div class="chips">
-        <div class="chip">🔫 Call of Duty</div>
-        <div class="chip">🔥 Free Fire</div>
+        <div class="chip">🎮 Games</div>
+        <div class="chip">📸 Share Moments</div>
         <div class="chip">🌍 Lifestyle</div>
         <div class="chip">💬 Private Chat</div>
         <div class="chip">🏟️ Community Room</div>
@@ -286,7 +328,7 @@ nav button.on svg{stroke-width:2.7}
         <div class="rbox bad">
           <h3>🚫 What we do not allow</h3>
           <ul>
-            <li>Scams, fake giveaways or fake UIDs. Please do not scam.</li>
+            <li>Scams, fake giveaways or fake accounts. Please do not scam.</li>
             <li>Sending nude or sexual pictures or messages</li>
             <li>Insults, threats, bullying or bad behavior</li>
             <li>Hacking or cheating offers</li>
@@ -302,7 +344,7 @@ nav button.on svg{stroke-width:2.7}
       <input id="password" type="password" placeholder="Password (6+ characters)">
       <div class="rule">
         <input type="checkbox" id="agree">
-        <div>I agree to the rules: respect everyone, no insults or threats, no nudity or inappropriate pictures, no scams or fake UIDs. Rule breakers will be restricted by the Owner.</div>
+        <div>I agree to the rules: respect everyone, no insults or threats, no nudity or inappropriate pictures, no scams or fake accounts. Rule breakers will be restricted by the Owner.</div>
       </div>
       <button id="signupBtn" class="green">Create account</button>
       <button id="loginBtn" class="ghost">Log in</button>
@@ -367,7 +409,7 @@ nav button.on svg{stroke-width:2.7}
       <div class="card">
         <h2>👥 Players</h2>
         <div class="mut">Tap a name to see his page, then send a request.</div>
-        <input id="playerSearch" type="search" placeholder="🔍 Search a player by name or UID" maxlength="40" autocomplete="off">
+        <input id="playerSearch" type="search" placeholder="🔍 Search a person by name" maxlength="40" autocomplete="off">
         <div id="players"></div>
       </div>
     </div>
@@ -400,7 +442,7 @@ nav button.on svg{stroke-width:2.7}
         <div class="crown">👑</div>
         <div class="mut">OWNER OF THE COMMUNITY</div>
         <h3>Jeffrey Nwokoleme</h3>
-        <div>Owner and Founder of Game Chat Hub · 🇳🇬 Nigeria</div>
+        <div>Owner and Founder of Jolt · 🇳🇬 Nigeria</div>
         <div id="ownerState" class="status"></div>
       </div>
       <div class="card">
@@ -423,7 +465,7 @@ nav button.on svg{stroke-width:2.7}
         <div class="rbox bad">
           <h3>🚫 What we do not allow</h3>
           <ul>
-            <li>Scams, fake giveaways or fake UIDs. Please do not scam.</li>
+            <li>Scams, fake giveaways or fake accounts. Please do not scam.</li>
             <li>Sending nude or sexual pictures or messages</li>
             <li>Insults, threats, bullying or bad behavior</li>
             <li>Hacking or cheating offers</li>
@@ -476,12 +518,16 @@ nav button.on svg{stroke-width:2.7}
             <button id="profBtn" class="ghost">🖼 Change profile picture</button>
           </div>
         </div>
-        <input id="gameName" placeholder="Your game name" maxlength="30">
+        <input id="gameName" placeholder="Your name" maxlength="30">
         <select id="game">
-          <option>Free Fire</option>
-          <option>Call of Duty</option>
+          <option>Gaming</option>
+          <option>Music</option>
+          <option>Sports</option>
+          <option>Fashion</option>
+          <option>Business</option>
+          <option>Other</option>
         </select>
-        <input id="uid" placeholder="Your game UID" maxlength="30">
+        <input id="uid" placeholder="Your game ID (optional)" maxlength="30">
         <button id="saveBtn" class="green">Save my profile</button>
         <button id="seeMe" class="ghost">👁 See my public page</button>
         <button id="installBtn" class="ghost hidden">📲 Install app on my phone</button>
@@ -492,12 +538,12 @@ nav button.on svg{stroke-width:2.7}
 
   </div>
 
-  <footer>© Game Chat Hub · Owned and created by <b>Jeffrey Nwokoleme</b> · v2</footer>
+  <footer>© Jolt · v2</footer>
 </div>
 
 <div id="rulesModal" class="hidden">
   <div class="card">
-    <h2>🏟️ Welcome to Game Chat Hub</h2>
+    <h2>🏟️ Welcome to Jolt</h2>
     <div class="mut" style="margin-bottom:10px">Our community rules. Please read them.</div>
     <div class="rulesGrid">
         <div class="rbox good">
@@ -512,7 +558,7 @@ nav button.on svg{stroke-width:2.7}
         <div class="rbox bad">
           <h3>🚫 What we do not allow</h3>
           <ul>
-            <li>Scams, fake giveaways or fake UIDs. Please do not scam.</li>
+            <li>Scams, fake giveaways or fake accounts. Please do not scam.</li>
             <li>Sending nude or sexual pictures or messages</li>
             <li>Insults, threats, bullying or bad behavior</li>
             <li>Hacking or cheating offers</li>
@@ -561,7 +607,7 @@ nav button.on svg{stroke-width:2.7}
 </div>
 
 <nav id="nav" class="hidden">
-  <button data-tab="home" class="on"><span><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg></span>Home</button>
+  <button data-tab="home" class="on"><span><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg></span>For You</button>
   <button data-tab="players"><span><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14c2.7 0 4.5 1.8 4.5 4.5"/></svg></span>Players</button>
   <button data-tab="room"><span><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg></span>Room</button>
   <button data-tab="friends"><span><svg viewBox="0 0 24 24"><path d="M21 3L3 10.5l7 3 3 7z"/><path d="M10 13.5L21 3"/></svg></span><em id="friendsLbl" style="font-style:normal">Friends</em></button>
@@ -636,7 +682,7 @@ async function ensureFollowOwner() {
 async function toggleFollow(uid) {
   const me = auth.currentUser;
   if (!me) return;
-  if (!myProfile) { say("Save your game name and UID first, then you can follow players."); return; }
+  if (!myProfile) { say("Save your name first, then you can follow people."); return; }
   const on = amFollowing(uid);
   if (on && uid === ownerUid) { say("Everyone follows the Owner 👑"); return; }
   try {
@@ -706,15 +752,17 @@ function setAv(el, name, photo) {
   }
 }
 function avatar(name, uid, big) {
-  const a = mk("div", "av" + (big ? " big" : "") + (uid && uid === ownerUid ? " own" : ""), (name || "?").charAt(0).toUpperCase());
+  const a = mk("div", "av" + (big ? " big" : "") + (big && uid && uid === ownerUid ? " own" : ""), (name || "?").charAt(0).toUpperCase());
   const p = players.find(x => x.uid === uid);
   if (p && p.photo) setAv(a, name, p.photo);
   if (isOnline(p) || (uid && uid === ownerUid && ownerOnline())) a.appendChild(mk("span", "dot"));
   return a;
 }
-function nameLine(name, uid) {
+function isVerified(uid) { return !!uid && (uid === ownerUid || followersOf(uid) >= 1000); }
+function nameLine(name, uid, showOwner) {
   const b = mk("b", "", name || "Player");
-  if (uid && uid === ownerUid) b.appendChild(mk("span", "badge", "👑 OWNER"));
+  if (uid && uid === ownerUid && showOwner) b.appendChild(mk("span", "badge", "👑 OWNER"));
+  if (isVerified(uid)) { const v = mk("span", "vtick", "✓"); v.title = "Verified"; b.appendChild(v); }
   return b;
 }
 function status(t) { return mk("div", "status", t); }
@@ -750,7 +798,7 @@ $("saveBtn").onclick = async () => {
   if (!user) return;
   const gn = $("gameName").value.trim();
   const gu = $("uid").value.trim();
-  if (!gn || !gu) { say("Fill your game name and UID"); return; }
+  if (!gn) { say("Fill your name"); return; }
   if (!isOwner() && /owner|jeffrey|admin|nwokoleme/i.test(gn)) { say("That name is reserved. Choose another name."); return; }
   try {
     const data = {
@@ -777,7 +825,7 @@ $("profFile").onchange = e => {
   if (!f) return;
   const user = auth.currentUser;
   if (!user) return;
-  if (!myProfile) { say("Save your game name and UID first, then add your picture."); return; }
+  if (!myProfile) { say("Save your name first, then add your picture."); return; }
   const r = new FileReader();
   r.onload = () => {
     const im = new Image();
@@ -904,7 +952,7 @@ document.addEventListener("visibilitychange", () => { if (document.hidden && cam
 // ---------- quick snap + Jux (ask the AI) ----------
 $("quickSnap").onclick = () => $("camBtn").click();
 
-const JUX_URL = "PASTE_YOUR_WORKER_URL_HERE";
+const JUX_URL = "https://long-grass-61f8.saviatim3.workers.dev";
 const JUX_DAILY = 20;
 let juxHist = [], juxBusy = false;
 const juxKey = () => "juxUsed_" + (auth.currentUser ? auth.currentUser.uid : "x") + "_" + new Date().toISOString().slice(0, 10);
@@ -935,7 +983,7 @@ async function juxAsk() {
   juxBusy = true;
   const wait = juxAdd("jux", "Jux is thinking...");
   try {
-    const r = await fetch(JUX_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: juxHist.slice(-8) }) });
+    const r = await fetch(JUX_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: q }) });
     const d = await r.json();
     if (!r.ok || !d.reply) throw new Error("fail");
     wait.textContent = d.reply;
@@ -1043,7 +1091,7 @@ function cmtBox(p) {
     const r = mk("div", "cmt");
     const t = mk("div");
     const n = mk("b", "", cm.name || "Player");
-    if (cm.uid === ownerUid) n.appendChild(mk("span", "badge", "👑"));
+    if (isVerified(cm.uid)) n.appendChild(mk("span", "vtick", "✓"));
     t.appendChild(n);
     t.appendChild(document.createTextNode(" " + cm.text));
     r.appendChild(t);
@@ -1091,33 +1139,114 @@ function reportPlayer(p) {
 }
 
 // ---------- feed ----------
+const ICON_HEART = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg>';
+const ICON_CMT = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.6-.8L3 21l1.9-5.3A8.4 8.4 0 1 1 21 11.5z"/></svg>';
+const ICON_SHARE = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3 11 13"/><path d="M22 3l-7 19-4-9-9-4 20-6z"/></svg>';
+function iconBtn(svg, label, fn, cls) {
+  const b = mk("button", "ibtn" + (cls ? " " + cls : ""));
+  b.type = "button";
+  b.innerHTML = svg;
+  if (label !== "" && label !== undefined) b.appendChild(mk("span", "", String(label)));
+  b.onclick = e => { if (e && e.stopPropagation) e.stopPropagation(); fn(e); };
+  return b;
+}
+async function sharePost(p) {
+  const url = location.origin + location.pathname;
+  const text = (p.text ? p.text.slice(0, 100) + " - " : "") + "See this on Jolt";
+  try {
+    if (navigator.share) { await navigator.share({ title: "Jolt", text: text, url: url }); return; }
+    await navigator.clipboard.writeText(url);
+    alert("Link copied. Paste it anywhere to share Jolt.");
+  } catch (e) { /* person closed the share box */ }
+}
 function postCard(p) {
   const me = auth.currentUser;
   const c = mk("div", "post");
-  const head = mk("div", "row link");
+  const likes = p.likes || [], fires = p.fires || [];
+  const l = likes.includes(me.uid), f = fires.includes(me.uid);
+
+  // top row: picture, name, time, three-dots menu
+  const head = mk("div", "row link phead");
   head.appendChild(avatar(p.name, p.uid));
   const info = mk("div", "info");
   info.appendChild(nameLine(p.name, p.uid));
   info.appendChild(mk("span", "mut", (CATS[p.category] || CATS.gaming) + " · " + timeText(p.time)));
   head.appendChild(info);
   head.onclick = () => showUser(p.uid);
+  const canDel = p.uid === me.uid || isOwner();
+  const canRep = p.uid !== me.uid;
+  if (canDel || canRep) {
+    const more = mk("button", "dots", "⋯");
+    more.type = "button";
+    const menu = mk("div", "pmenu hidden");
+    if (canRep) { const r = mk("div", "", "🚩 Report"); r.onclick = e => { e.stopPropagation(); menu.classList.add("hidden"); reportPost(p); }; menu.appendChild(r); }
+    if (canDel) { const d = mk("div", "red", "🗑 Delete"); d.onclick = e => { e.stopPropagation(); menu.classList.add("hidden"); delPost(p.id); }; menu.appendChild(d); }
+    more.onclick = e => { e.stopPropagation(); menu.classList.toggle("hidden"); };
+    head.appendChild(more);
+    head.appendChild(menu);
+  }
   c.appendChild(head);
-  if (p.text) c.appendChild(mk("p", "", p.text));
+
+  // body: photo (or big text). Double tap = like, with a heart pop
+  const body = mk("div", "pbody");
+  let lastTap = 0;
+  const pop = mk("div", "heartPop", "❤️");
+  const doubleTap = () => {
+    pop.classList.remove("go"); void pop.offsetWidth; pop.classList.add("go");
+    if (!likes.includes(me.uid)) react(p.id, "likes", false);
+  };
+  body.addEventListener("pointerup", () => {
+    const now = Date.now();
+    if (now - lastTap < 320) { lastTap = 0; doubleTap(); } else lastTap = now;
+  });
   if (p.img && String(p.img).startsWith("data:image/")) {
     const im = mk("img");
     im.src = p.img;
-    c.appendChild(im);
+    im.draggable = false;
+    body.appendChild(im);
+  } else if (p.text) {
+    body.classList.add("textOnly");
+    body.appendChild(mk("p", "bigText", p.text));
   }
-  const likes = p.likes || [], fires = p.fires || [];
-  const l = likes.includes(me.uid), f = fires.includes(me.uid);
-  c.appendChild(btn((l ? "❤️ " : "🤍 ") + likes.length, "ghost", () => react(p.id, "likes", l)));
-  c.appendChild(btn("🔥 " + fires.length + (f ? " ✓" : ""), "ghost", () => react(p.id, "fires", f)));
-  c.appendChild(btn("💬 " + (p.commentCount || 0), "ghost", () => toggleCmts(p.id)));
-  if (p.uid !== me.uid) c.appendChild(btn("🚩", "ghost", () => reportPost(p)));
-  if (p.uid === me.uid || isOwner()) c.appendChild(btn("🗑", "ghost", () => delPost(p.id)));
+  body.appendChild(pop);
+  c.appendChild(body);
+
+  // action row: like, comment, fire, share
+  const acts = mk("div", "acts");
+  acts.appendChild(iconBtn(ICON_HEART, "", () => react(p.id, "likes", l), l ? "liked" : ""));
+  acts.appendChild(iconBtn(ICON_CMT, "", () => toggleCmts(p.id)));
+  const fb = mk("button", "ibtn fireBtn" + (f ? " on" : ""), "🔥");
+  fb.type = "button";
+  fb.onclick = e => { e.stopPropagation(); react(p.id, "fires", f); };
+  acts.appendChild(fb);
+  acts.appendChild(iconBtn(ICON_SHARE, "", () => sharePost(p), "shareBtn"));
+  c.appendChild(acts);
+
+  // counts line
+  if (likes.length || fires.length) {
+    const parts = [];
+    if (likes.length) parts.push(likes.length + (likes.length === 1 ? " like" : " likes"));
+    if (fires.length) parts.push("🔥 " + fires.length);
+    c.appendChild(mk("div", "counts", parts.join("  ·  ")));
+  }
+
+  // caption under photo
+  if (p.text && body.classList.contains("textOnly") === false) {
+    const cap = mk("div", "caption");
+    cap.appendChild(mk("b", "", (p.name || "Player") + " "));
+    cap.appendChild(document.createTextNode(p.text));
+    c.appendChild(cap);
+  }
+
+  // comments link
+  const cc = p.commentCount || 0;
+  const vc = mk("div", "viewCmts", cc ? "View all " + cc + (cc === 1 ? " comment" : " comments") : "Add a comment...");
+  vc.onclick = () => toggleCmts(p.id);
+  c.appendChild(vc);
   if (openCmts.has(p.id)) c.appendChild(cmtBox(p));
   return c;
 }
+document.addEventListener("click", () => document.querySelectorAll(".pmenu").forEach(m => m.classList.add("hidden")));
 function renderCatBar() {
   const bar = $("catBar");
   bar.innerHTML = "";
@@ -1158,18 +1287,14 @@ function actionFor(p) {
   const r = reqs[id];
   const box = mk("div");
   if (!r) {
-    const sel = mk("select");
-    ["Free Fire", "Call of Duty"].forEach(g => sel.appendChild(mk("option", "", g)));
-    sel.value = p.game || "Free Fire";
-    box.appendChild(sel);
-    box.appendChild(btn("➕ Send request", "", () => sendReq(p, id, sel.value)));
+    box.appendChild(btn("➕ Send request", "", () => sendReq(p, id, p.game || "Social")));
   } else if (r.status === "accepted") {
     box.appendChild(status("✅ Friends"));
     box.appendChild(btn("💬 Chat", "", () => openDM(id, p.gameName)));
   } else if (r.from === me.uid) {
-    box.appendChild(status("⏳ Request sent (" + (r.game || "") + ")"));
+    box.appendChild(status("⏳ Request sent"));
   } else {
-    box.appendChild(status("📩 Wants to play " + (r.game || "")));
+    box.appendChild(status("📩 Sent you a friend request"));
     box.appendChild(btn("✔ Accept", "green", () => acceptReq(id)));
   }
   return box;
@@ -1206,7 +1331,7 @@ function personRow(p, quick) {
     info.appendChild(btn(f ? "✓ Following" : "➕ Follow", f ? "ghost" : "green", () => toggleFollow(p.uid)));
     const rid = [p.uid, auth.currentUser.uid].sort().join("_");
     const r = reqs[rid];
-    if (!r) info.appendChild(btn("👋 Add friend", "", () => sendReq(p, rid, p.game || "Free Fire")));
+    if (!r) info.appendChild(btn("👋 Add friend", "", () => sendReq(p, rid, p.game || "Social")));
     else if (r.status === "accepted") info.appendChild(btn("💬 Chat", "", () => openDM(rid, p.gameName)));
     else if (r.from === auth.currentUser.uid) info.appendChild(mk("div", "status", "⏳ Request sent"));
     else info.appendChild(btn("✔ Accept friend", "green", () => acceptReq(rid)));
@@ -1244,7 +1369,7 @@ function renderPlayers() {
       hasInc = true; incCount++;
       const row = personRow(p);
       const extra = mk("div");
-      extra.appendChild(status("Wants to play " + (r.game || "")));
+      extra.appendChild(status("Wants to be your friend"));
       extra.appendChild(btn("✔ Accept", "green", () => acceptReq(id)));
       extra.appendChild(btn("✖ Decline", "ghost", () => declineReq(id)));
       row.querySelector(".info").appendChild(extra);
@@ -1276,7 +1401,7 @@ function renderUser() {
   const head = mk("div", "row");
   head.appendChild(avatar(p.gameName, p.uid, true));
   const info = mk("div", "info");
-  info.appendChild(nameLine(p.gameName, p.uid));
+  info.appendChild(nameLine(p.gameName, p.uid, true));
   info.appendChild(mk("span", "mut", isOnline(p) ? "🟢 Online now" : "⚫ Offline"));
   head.appendChild(info);
   c.appendChild(head);
@@ -1289,12 +1414,12 @@ function renderUser() {
     st.appendChild(d);
   });
   c.appendChild(st);
-  c.appendChild(mk("div", "uidline", "🎮 " + (p.game || "") + "  ·  UID: " + (p.gameUid || "-")));
-  const cp = btn("📋 Copy UID", "ghost", async () => {
+  c.appendChild(mk("div", "uidline", "⭐ " + (p.game || "Member") + (p.gameUid ? "  ·  Game ID: " + p.gameUid : "")));
+  const cp = btn("📋 Copy game ID", "ghost", async () => {
     try { await navigator.clipboard.writeText(p.gameUid || ""); cp.textContent = "✅ Copied"; }
-    catch (e) { say("Could not copy. Hold the UID and copy it."); }
+    catch (e) { say("Could not copy. Hold the ID and copy it."); }
   });
-  c.appendChild(cp);
+  if (p.gameUid) c.appendChild(cp);
   if (p.uid !== me.uid) {
     const fl = amFollowing(p.uid);
     c.appendChild(btn(fl ? (p.uid === ownerUid ? "✓ Following the Owner" : "✓ Following") : "➕ Follow", fl ? "ghost" : "green", () => toggleFollow(p.uid)));
@@ -1377,7 +1502,7 @@ $("closeChat").onclick = () => {
 };
 
 // ---------- community room + owner bot ----------
-const RULES_TEXT = "Rules: respect everyone, no insults or threats, no nudity or inappropriate pictures, no scams or fake UIDs. See a bad post? Tap the 🚩 under it.";
+const RULES_TEXT = "Rules: respect everyone, no insults or threats, no nudity or inappropriate pictures, no scams or fake accounts. See a bad post? Tap the 🚩 under it.";
 function botAnswer(t) {
   const s = t.toLowerCase();
   if (/\b(password|forgot|reset|log ?in|sign ?in|can'?t enter|cannot enter)\b/.test(s))
@@ -1396,20 +1521,20 @@ function botAnswer(t) {
   if (/\b(install|download|app|home screen|icon)\b/.test(s))
     return "To install: on Android Chrome tap Me, then Install app (or the ⋮ menu, then Add to Home screen). On iPhone use Safari, tap Share, then Add to Home Screen.";
   if (/\b(profile|change name|username|game name|edit)\b/.test(s))
-    return "Open the Me tab, change your game name or UID, then tap Save my profile.";
+    return "Open the Me tab, change your name or game ID, then tap Save my profile.";
   if (/\b(delete|remove)\b/.test(s))
     return "You can delete your own post with the 🗑 button under it. To delete your whole account, message the Owner.";
   if (/\b(owner|jeffrey|admin|boss)\b/.test(s))
     return "Jeffrey Nwokoleme is the Owner of this community. He is offline now, but he will read your message when he comes online.";
   if (/\b(friend|friends|request|add)\b/.test(s))
-    return "To add a friend: open Players, tap a name, choose Free Fire or Call of Duty, then tap Send request. When he accepts, tap Chat.";
+    return "To add a friend: open Players, tap a name, then tap Send request. When they accept, tap Chat.";
   if (/\buid\b/.test(s))
-    return "Every player's game UID is on his page. Tap Players, open a name, and tap Copy UID.";
+    return "A game ID is on a person's page if they added one. Tap Players, open a name, and tap Copy game ID.";
   if (/\b(thanks|thank you|thx)\b/.test(s)) return "You are welcome! 🎮";
   if (/\b(help|menu|what can you do)\b/.test(s))
-    return "I can help with: login and password, restrictions and appeals, rules, reporting, posting, friend requests, UIDs and installing the app. Just ask!";
+    return "I can help with: login and password, restrictions and appeals, rules, reporting, posting, friend requests, game IDs and installing the app. Just ask!";
   if (/\b(hi|hello|hey|good morning|good evening)\b/.test(s))
-    return "Hello! 👋 Welcome to Game Chat Hub. Type help to see what I can do.";
+    return "Hello! 👋 Welcome to Jolt. Type help to see what I can do.";
   if (s.includes("?"))
     return "Thanks for your question. The Owner is offline now and will reply when he is back. Type help to see what I can answer now.";
   return "";
@@ -1682,7 +1807,7 @@ function startMain(user, sid) {
   presenceTimer = setInterval(() => { ping(); renderPlayers(); }, 60000);
   setTimeout(() => {
     if (sid !== session) return;
-    if (!myProfile && !isOwner()) { showTab("me"); say("Welcome! Fill your game name and UID first."); }
+    if (!myProfile && !isOwner()) { showTab("me"); say("Welcome! Fill your name first."); }
     else showTab("home");
   }, 800);
 }
@@ -1703,7 +1828,9 @@ function showRestricted(user) {
   }, () => {});
 }
 
+setTimeout(() => { const bl = $("bootLoad"); if (bl) { bl.remove(); if (!auth.currentUser) $("authBox").classList.remove("hidden"); } }, 10000);
 onAuthStateChanged(auth, user => {
+  const bl = $("bootLoad"); if (bl) bl.remove();
   session++;
   const sid = session;
   stopAll();
@@ -1858,7 +1985,7 @@ onAuthStateChanged(auth, user => {
   var current = ls("wp") || "none";
 
   /* Real pictures: put files named wp-naruto.jpg, wp-spiderman.jpg ... in the GitHub repo and they appear here. */
-  var PHOTOS = [["naruto", "🍥 Naruto"], ["spiderman", "🕷️ Spider-Man"], ["goku", "🐉 Goku"], ["batman", "🦇 Batman"], ["freefire", "🔥 Free Fire"], ["cod", "🎯 Call of Duty"], ["pic1", "🖼️ Picture 1"], ["pic2", "🖼️ Picture 2"]];
+  var PHOTOS = [["naruto", "🍥 Naruto"], ["spiderman", "🕷️ Spider-Man"], ["goku", "🐉 Goku"], ["batman", "🦇 Batman"], ["pic1", "🖼️ Picture 1"], ["pic2", "🖼️ Picture 2"]];
   var found = [], probed = false;
   function probe(key, name) {
     var ex = ["jpg", "jpeg", "png", "webp"], i = 0;
