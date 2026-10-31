@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Game Chat Hub - by Jeffrey Nwokoleme</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Game Chat Hub">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<script>window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();window.__ip=e;});</script>
 <style>
 :root{--bg:#000;--card:#16181c;--tx:#e7e9ea;--mut:#71767b;--line:#2f3336;--ac:#1d9bf0;--inp:#202327}
 body.light{--bg:#fff;--card:#f7f9f9;--tx:#0f1419;--mut:#536471;--line:#eff3f4;--inp:#eff3f4}
@@ -28,6 +36,9 @@ button.ghost{background:transparent;color:var(--tx);border:1px solid var(--line)
 button.red{background:#f4212e}
 button:active{transform:scale(.96)}
 .sm{width:auto;display:inline-block;padding:8px 16px;margin:8px 8px 0 0;font-size:14px}
+.catbar{display:flex;gap:6px;overflow-x:auto;padding:4px 0 2px}
+.catbtn{flex:none;width:auto;margin:4px 0;padding:8px 14px;font-size:13px;background:var(--inp);color:var(--tx);border:1px solid var(--line);border-radius:20px}
+.catbtn.on{background:linear-gradient(90deg,#1d9bf0,#6366f1);color:#fff;border-color:transparent}
 .hero{text-align:center;padding:26px 8px 6px}
 .hero h1{margin:0;font-size:38px;line-height:1.1;background:linear-gradient(90deg,#1d9bf0,#a855f7,#ec4899);-webkit-background-clip:text;background-clip:text;color:transparent}
 .hero p{color:var(--mut)}
@@ -49,6 +60,10 @@ button:active{transform:scale(.96)}
 .post{border-bottom:1px solid var(--line);padding:14px 2px}
 .post p{margin:10px 0;font-size:16px;white-space:pre-wrap;word-wrap:break-word}
 .post img,#preview{width:100%;max-height:420px;object-fit:cover;border-radius:16px;border:1px solid var(--line);margin-top:6px}
+.cmts{margin-top:10px;background:var(--inp);border-radius:14px;padding:8px 10px}
+.cmt{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:14px;word-wrap:break-word}
+.cmt div{min-width:0}
+.cx{cursor:pointer;flex:none}
 .status{color:#f4b400;font-size:13px;margin-top:6px}
 .uidline{background:var(--inp);border-radius:12px;padding:10px;margin:10px 0;font-size:15px}
 #msg{color:#f4212e;text-align:center;min-height:18px;font-size:14px;margin:6px 0;font-weight:bold}
@@ -90,10 +105,11 @@ footer b{color:#f4b400}
   <div id="authBox">
     <div class="hero">
       <h1>Play. Connect.<br>Dominate.</h1>
-      <p>Find Call of Duty and Free Fire players. Add them. Chat. Play together.</p>
+      <p>Games, lifestyle and fun. Find Call of Duty and Free Fire players, post, chat, and play together.</p>
       <div class="chips">
         <div class="chip">🔫 Call of Duty</div>
         <div class="chip">🔥 Free Fire</div>
+        <div class="chip">🌍 Lifestyle</div>
         <div class="chip">💬 Private Chat</div>
         <div class="chip">🏟️ Community Room</div>
       </div>
@@ -108,6 +124,7 @@ footer b{color:#f4b400}
       </div>
       <button id="signupBtn" class="green">Create account</button>
       <button id="loginBtn" class="ghost">Log in</button>
+      <button id="forgotBtn" class="ghost">Forgot password?</button>
     </div>
   </div>
 
@@ -121,7 +138,7 @@ footer b{color:#f4b400}
       <h2>📨 Appeal to the Owner</h2>
       <div class="mut">Write to Jeffrey Nwokoleme. Be respectful.</div>
       <div id="appealLog" class="log" style="height:240px"></div>
-      <input id="appealInput" placeholder="Type your message to the Owner">
+      <input id="appealInput" placeholder="Type your message to the Owner" maxlength="800">
       <button id="appealSend">Send to Owner</button>
       <button id="bannedOut" class="ghost">Log out</button>
     </div>
@@ -137,14 +154,20 @@ footer b{color:#f4b400}
       <div class="card">
         <div class="row">
           <div class="av" id="meAv">?</div>
-          <div class="info"><b id="meName">Welcome</b><span class="mut">Post your wins. Show your game.</span></div>
+          <div class="info"><b id="meName">Welcome</b><span class="mut">Share your wins, your day, your life.</span></div>
         </div>
+        <select id="postCat">
+          <option value="gaming">🎮 Gaming</option>
+          <option value="lifestyle">🌍 Lifestyle</option>
+          <option value="fun">😂 Fun</option>
+        </select>
         <textarea id="postText" maxlength="300" placeholder="I just defeated a squad! 🔥"></textarea>
         <img id="preview" class="hidden">
         <input id="photoFile" type="file" accept="image/*" class="hidden">
         <button id="photoBtn" class="ghost">📷 Add photo</button>
         <button id="postBtn">Post</button>
       </div>
+      <div id="catBar" class="catbar"></div>
       <div id="feed"></div>
     </div>
 
@@ -171,7 +194,7 @@ footer b{color:#f4b400}
       <div class="card">
         <h2 id="chatTitle"></h2>
         <div id="chatLog" class="log"></div>
-        <input id="chatInput" placeholder="Type a message">
+        <input id="chatInput" placeholder="Type a message" maxlength="500">
         <button id="sendBtn">Send</button>
       </div>
     </div>
@@ -196,21 +219,24 @@ footer b{color:#f4b400}
             <li>No insults, threats or bullying.</li>
             <li>No nudity or inappropriate pictures.</li>
             <li>No scams or fake game UIDs.</li>
+            <li>See a bad post? Tap 🚩 under it to report it.</li>
             <li>Breaking rules = restriction by the Owner (usually 30 days).</li>
           </ul>
         </details>
       </div>
       <div class="card">
         <h2>🏟️ Community Room</h2>
-        <div class="mut">Everyone can talk here. The Owner and his bot 🤖 will reply.</div>
+        <div class="mut">Everyone can talk here. The Owner and his bot 🤖 will reply. Ask the bot for "help".</div>
         <div id="roomLog" class="log"></div>
-        <input id="roomInput" placeholder="Say something to the community">
+        <input id="roomInput" placeholder="Say something to the community" maxlength="500">
         <button id="roomSend">Send</button>
       </div>
       <div id="adminBox" class="card hidden" style="border:2px solid #f4212e">
         <h2>👑 Owner Inbox</h2>
         <div class="mut">Appeals from restricted players:</div>
         <div id="appealList"></div>
+        <h2 style="margin-top:16px">🚩 Reports<span id="repCount"></span></h2>
+        <div id="reportList"></div>
         <h2 style="margin-top:16px">🚫 Manage players</h2>
         <div id="adminList"></div>
       </div>
@@ -220,14 +246,16 @@ footer b{color:#f4b400}
       <div class="card">
         <h2>⚙️ My Profile</h2>
         <p id="who" class="mut"></p>
-        <input id="gameName" placeholder="Your game name">
+        <input id="gameName" placeholder="Your game name" maxlength="30">
         <select id="game">
           <option>Free Fire</option>
           <option>Call of Duty</option>
         </select>
-        <input id="uid" placeholder="Your game UID">
+        <input id="uid" placeholder="Your game UID" maxlength="30">
         <button id="saveBtn" class="green">Save my profile</button>
         <button id="seeMe" class="ghost">👁 See my public page</button>
+        <button id="installBtn" class="ghost hidden">📲 Install app on my phone</button>
+        <div id="iosHint" class="mut hidden">iPhone: open this page in Safari, tap the Share button, then tap "Add to Home Screen".</div>
         <button id="logoutBtn" class="ghost">Log out</button>
       </div>
     </div>
@@ -247,8 +275,8 @@ footer b{color:#f4b400}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, updateDoc, addDoc, deleteDoc, collection, query, where, orderBy, limit, onSnapshot, serverTimestamp, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, updateDoc, addDoc, deleteDoc, collection, query, where, orderBy, limit, onSnapshot, serverTimestamp, arrayUnion, arrayRemove, increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCTNxprto8tS76qr9opP1CCPaDD8dNZNRI",
@@ -261,17 +289,38 @@ const firebaseConfig = {
 
 const OWNER_EMAIL = "saviatim3@gmail.com";
 const DAY = 86400000;
+const CATS = { gaming: "🎮 Gaming", lifestyle: "🌍 Lifestyle", fun: "😂 Fun" };
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const $ = id => document.getElementById(id);
-const say = t => { $("msg").textContent = t; };
+const say = t => { $("msg").style.color = ""; $("msg").textContent = t; };
+const good = t => { say(t); $("msg").style.color = "#00ba7c"; };
 
-let players = [], reqs = {}, posts = [], bans = {}, appeals = [];
+function friendly(e) {
+  const c = (e && e.code) || "";
+  const m = {
+    "auth/invalid-credential": "Wrong email or password.",
+    "auth/wrong-password": "Wrong email or password.",
+    "auth/user-not-found": "No account with that email. Tap Create account.",
+    "auth/email-already-in-use": "That email already has an account. Tap Log in.",
+    "auth/weak-password": "Password must be 6 or more characters.",
+    "auth/invalid-email": "That email does not look right.",
+    "auth/missing-email": "Type your email first.",
+    "auth/missing-password": "Type your password.",
+    "auth/too-many-requests": "Too many tries. Wait a few minutes and try again.",
+    "auth/network-request-failed": "No internet. Check your network.",
+    "permission-denied": "You are not allowed to do that."
+  };
+  return m[c] || (e && e.message) || "Something went wrong. Try again.";
+}
+
+let players = [], reqs = {}, posts = [], bans = {}, appeals = [], reports = [];
 let unsubs = [], chatUnsub = null, roomUnsub = null, appealUnsub = null;
 let chatCtx = null, ownerUid = null, ownerSeen = 0, myProfile = null, viewUid = null, pendingImg = "";
 let presenceTimer = null, mainStarted = false, lastAppealFrom = "", myBan = null, session = 0;
+let feedCat = "all", cmtData = {}, cmtUnsubs = {}, openCmts = new Set(), drafts = {};
 
 const isOwner = () => auth.currentUser && auth.currentUser.email && auth.currentUser.email.toLowerCase() === OWNER_EMAIL;
 const isOnline = p => p && p.lastSeen && (Date.now() - p.lastSeen) < 150000;
@@ -283,6 +332,24 @@ try { if (localStorage.getItem("theme") === "light") document.body.classList.add
 $("themeBtn").onclick = () => {
   document.body.classList.toggle("light");
   try { localStorage.setItem("theme", document.body.classList.contains("light") ? "light" : "dark"); } catch (e) {}
+};
+
+// ---------- install as app ----------
+if ("serviceWorker" in navigator) { navigator.serviceWorker.register("sw.js").catch(() => {}); }
+const standalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || navigator.standalone;
+function checkInstall() {
+  if (standalone) return;
+  if (window.__ip) $("installBtn").classList.remove("hidden");
+}
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); window.__ip = e; checkInstall(); });
+checkInstall();
+if (/iphone|ipad|ipod/i.test(navigator.userAgent) && !standalone) $("iosHint").classList.remove("hidden");
+$("installBtn").onclick = async () => {
+  if (!window.__ip) return;
+  window.__ip.prompt();
+  try { await window.__ip.userChoice; } catch (e) {}
+  window.__ip = null;
+  $("installBtn").classList.add("hidden");
 };
 
 // ---------- tabs ----------
@@ -326,16 +393,23 @@ function timeText(t) {
   catch (e) { return ""; }
 }
 function dateText(ms) { return new Date(ms).toLocaleDateString([], { dateStyle: "medium" }); }
+function myName() { return myProfile ? myProfile.gameName : (isOwner() ? "Jeffrey Nwokoleme" : "Player"); }
 
 // ---------- auth ----------
 $("signupBtn").onclick = async () => {
   if (!$("agree").checked) { say("Please tick the box to accept the rules."); return; }
-  try { await createUserWithEmailAndPassword(auth, $("email").value, $("password").value); }
-  catch (e) { say(e.message); }
+  try { await createUserWithEmailAndPassword(auth, $("email").value.trim(), $("password").value); }
+  catch (e) { say(friendly(e)); }
 };
 $("loginBtn").onclick = async () => {
-  try { await signInWithEmailAndPassword(auth, $("email").value, $("password").value); }
-  catch (e) { say(e.message); }
+  try { await signInWithEmailAndPassword(auth, $("email").value.trim(), $("password").value); }
+  catch (e) { say(friendly(e)); }
+};
+$("forgotBtn").onclick = async () => {
+  const em = $("email").value.trim();
+  if (!em) { say("Type your email first, then tap Forgot password."); return; }
+  try { await sendPasswordResetEmail(auth, em); good("✅ Reset link sent. Check your email and your spam folder."); }
+  catch (e) { say(friendly(e)); }
 };
 $("logoutBtn").onclick = () => signOut(auth);
 $("bannedOut").onclick = () => signOut(auth);
@@ -344,18 +418,21 @@ $("bannedOut").onclick = () => signOut(auth);
 $("saveBtn").onclick = async () => {
   const user = auth.currentUser;
   if (!user) return;
-  if (!$("gameName").value.trim() || !$("uid").value.trim()) { say("Fill your game name and UID"); return; }
+  const gn = $("gameName").value.trim();
+  const gu = $("uid").value.trim();
+  if (!gn || !gu) { say("Fill your game name and UID"); return; }
+  if (!isOwner() && /owner|jeffrey|admin|nwokoleme/i.test(gn)) { say("That name is reserved. Choose another name."); return; }
   try {
     await setDoc(doc(db, "players", user.uid), {
       uid: user.uid,
-      gameName: $("gameName").value.trim(),
+      gameName: gn,
       game: $("game").value,
-      gameUid: $("uid").value.trim(),
+      gameUid: gu,
       lastSeen: Date.now()
     }, { merge: true });
     say("");
     showTab("home");
-  } catch (e) { say(e.message); }
+  } catch (e) { say(friendly(e)); }
 };
 
 // ---------- posts ----------
@@ -388,7 +465,8 @@ $("postBtn").onclick = async () => {
   try {
     await addDoc(collection(db, "posts"), {
       uid: auth.currentUser.uid, name: myProfile.gameName, text: text,
-      img: pendingImg, time: serverTimestamp(), likes: [], fires: []
+      img: pendingImg, category: $("postCat").value,
+      time: serverTimestamp(), likes: [], fires: [], commentCount: 0
     });
     $("postText").value = "";
     pendingImg = "";
@@ -396,17 +474,111 @@ $("postBtn").onclick = async () => {
     $("photoBtn").textContent = "📷 Add photo";
     $("photoFile").value = "";
     say("");
-  } catch (e) { say(e.message); }
+  } catch (e) { say(friendly(e)); }
 };
 async function react(id, field, on) {
   try {
     await updateDoc(doc(db, "posts", id), { [field]: on ? arrayRemove(auth.currentUser.uid) : arrayUnion(auth.currentUser.uid) });
-  } catch (e) { say(e.message); }
+  } catch (e) { say(friendly(e)); }
 }
 async function delPost(id) {
   if (!confirm("Delete this post?")) return;
-  try { await deleteDoc(doc(db, "posts", id)); } catch (e) { say(e.message); }
+  try { await deleteDoc(doc(db, "posts", id)); } catch (e) { say(friendly(e)); }
 }
+
+// ---------- comments ----------
+function refreshPosts() {
+  renderFeed();
+  if (viewUid && !$("tab-user").classList.contains("hidden")) renderUser();
+}
+function toggleCmts(id) {
+  if (openCmts.has(id)) {
+    openCmts.delete(id);
+    if (cmtUnsubs[id]) { cmtUnsubs[id](); delete cmtUnsubs[id]; }
+    refreshPosts();
+    return;
+  }
+  openCmts.add(id);
+  const q = query(collection(db, "posts", id, "comments"), orderBy("time"), limit(100));
+  cmtUnsubs[id] = onSnapshot(q, snap => {
+    cmtData[id] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    refreshPosts();
+  }, e => say(friendly(e)));
+  refreshPosts();
+}
+async function addComment(p, text) {
+  if (!myProfile && !isOwner()) { say("Save your profile first."); showTab("me"); return; }
+  try {
+    await addDoc(collection(db, "posts", p.id, "comments"), { uid: auth.currentUser.uid, name: myName(), text: text, time: serverTimestamp() });
+    await updateDoc(doc(db, "posts", p.id), { commentCount: increment(1) });
+    say("");
+  } catch (e) { say(friendly(e)); }
+}
+async function delComment(postId, cid) {
+  if (!confirm("Delete this comment?")) return;
+  try {
+    await deleteDoc(doc(db, "posts", postId, "comments", cid));
+    await updateDoc(doc(db, "posts", postId), { commentCount: increment(-1) });
+  } catch (e) { say(friendly(e)); }
+}
+function cmtBox(p) {
+  const me = auth.currentUser;
+  const box = mk("div", "cmts");
+  const list = cmtData[p.id];
+  if (!list) box.appendChild(mk("div", "mut", "Loading..."));
+  else if (!list.length) box.appendChild(mk("div", "mut", "No comments yet. Say something!"));
+  else list.forEach(cm => {
+    const r = mk("div", "cmt");
+    const t = mk("div");
+    const n = mk("b", "", cm.name || "Player");
+    if (cm.uid === ownerUid) n.appendChild(mk("span", "badge", "👑"));
+    t.appendChild(n);
+    t.appendChild(document.createTextNode(" " + cm.text));
+    r.appendChild(t);
+    if (cm.uid === me.uid || isOwner()) {
+      const x = mk("span", "cx", "🗑");
+      x.onclick = () => delComment(p.id, cm.id);
+      r.appendChild(x);
+    }
+    box.appendChild(r);
+  });
+  const inp = mk("input");
+  inp.placeholder = "Write a comment";
+  inp.maxLength = 300;
+  inp.value = drafts[p.id] || "";
+  inp.oninput = () => { drafts[p.id] = inp.value; };
+  box.appendChild(inp);
+  box.appendChild(btn("Send", "", async () => {
+    const t = inp.value.trim();
+    if (!t) return;
+    drafts[p.id] = "";
+    inp.value = "";
+    await addComment(p, t);
+  }));
+  return box;
+}
+
+// ---------- reports ----------
+async function sendReport(data) {
+  const reason = prompt("Why are you reporting this? Write a short reason.");
+  if (reason === null) return;
+  const u = auth.currentUser;
+  try {
+    await addDoc(collection(db, "reports"), Object.assign({
+      by: u.uid, byName: myName(), reason: reason.trim().slice(0, 120), time: serverTimestamp()
+    }, data));
+    say("");
+    alert("Thank you. The Owner will check it.");
+  } catch (e) { say(friendly(e)); }
+}
+function reportPost(p) {
+  sendReport({ targetUid: p.uid, targetName: p.name || "Player", postId: p.id, snippet: (p.text || "[photo]").slice(0, 120) });
+}
+function reportPlayer(p) {
+  sendReport({ targetUid: p.uid, targetName: p.gameName || "Player", postId: "", snippet: "" });
+}
+
+// ---------- feed ----------
 function postCard(p) {
   const me = auth.currentUser;
   const c = mk("div", "post");
@@ -414,7 +586,7 @@ function postCard(p) {
   head.appendChild(avatar(p.name, p.uid));
   const info = mk("div", "info");
   info.appendChild(nameLine(p.name, p.uid));
-  info.appendChild(mk("span", "mut", timeText(p.time)));
+  info.appendChild(mk("span", "mut", (CATS[p.category] || CATS.gaming) + " · " + timeText(p.time)));
   head.appendChild(info);
   head.onclick = () => showUser(p.uid);
   c.appendChild(head);
@@ -428,15 +600,28 @@ function postCard(p) {
   const l = likes.includes(me.uid), f = fires.includes(me.uid);
   c.appendChild(btn((l ? "❤️ " : "🤍 ") + likes.length, "ghost", () => react(p.id, "likes", l)));
   c.appendChild(btn("🔥 " + fires.length + (f ? " ✓" : ""), "ghost", () => react(p.id, "fires", f)));
+  c.appendChild(btn("💬 " + (p.commentCount || 0), "ghost", () => toggleCmts(p.id)));
+  if (p.uid !== me.uid) c.appendChild(btn("🚩", "ghost", () => reportPost(p)));
   if (p.uid === me.uid || isOwner()) c.appendChild(btn("🗑", "ghost", () => delPost(p.id)));
+  if (openCmts.has(p.id)) c.appendChild(cmtBox(p));
   return c;
+}
+function renderCatBar() {
+  const bar = $("catBar");
+  bar.innerHTML = "";
+  [["all", "🌐 All"], ["gaming", CATS.gaming], ["lifestyle", CATS.lifestyle], ["fun", CATS.fun]].forEach(o => {
+    const b = mk("button", "catbtn" + (feedCat === o[0] ? " on" : ""), o[1]);
+    b.onclick = () => { feedCat = o[0]; renderCatBar(); renderFeed(); };
+    bar.appendChild(b);
+  });
 }
 function renderFeed() {
   if (!auth.currentUser) return;
   const box = $("feed");
   box.innerHTML = "";
-  if (!posts.length) { box.appendChild(mk("div", "card mut", "No posts yet. Be the first to post!")); return; }
-  posts.forEach(p => box.appendChild(postCard(p)));
+  const list = posts.filter(p => feedCat === "all" || (p.category || "gaming") === feedCat);
+  if (!list.length) { box.appendChild(mk("div", "card mut", "No posts here yet. Be the first to post!")); return; }
+  list.forEach(p => box.appendChild(postCard(p)));
 }
 function renderStrip() {
   const s = $("strip");
@@ -452,6 +637,7 @@ function renderStrip() {
     s.appendChild(it);
   });
 }
+renderCatBar();
 
 // ---------- friend actions ----------
 function actionFor(p) {
@@ -481,11 +667,11 @@ async function sendReq(p, id, game) {
   try {
     await setDoc(doc(db, "requests", id), { from: me, to: p.uid, participants: [me, p.uid], status: "pending", game: game });
     say("");
-  } catch (e) { say(e.message); }
+  } catch (e) { say(friendly(e)); }
 }
 async function acceptReq(id) {
   try { await updateDoc(doc(db, "requests", id), { status: "accepted" }); say(""); }
-  catch (e) { say(e.message); }
+  catch (e) { say(friendly(e)); }
 }
 
 // ---------- players list ----------
@@ -565,7 +751,10 @@ function renderUser() {
     catch (e) { say("Could not copy. Hold the UID and copy it."); }
   });
   c.appendChild(cp);
-  if (p.uid !== me.uid) c.appendChild(actionFor(p));
+  if (p.uid !== me.uid) {
+    c.appendChild(actionFor(p));
+    c.appendChild(btn("🚩 Report player", "ghost", () => reportPlayer(p)));
+  }
   box.appendChild(c);
   const mine = posts.filter(x => x.uid === p.uid);
   box.appendChild(mk("h3", "", "Posts"));
@@ -602,7 +791,7 @@ function openChatCtx(ctx) {
   showTab("chat");
   if (chatUnsub) chatUnsub();
   const q = query(collection(db, ...ctx.path), orderBy("time"));
-  chatUnsub = onSnapshot(q, snap => renderMsgs($("chatLog"), snap), e => say(e.message));
+  chatUnsub = onSnapshot(q, snap => renderMsgs($("chatLog"), snap), e => say(friendly(e)));
 }
 $("sendBtn").onclick = async () => {
   const text = $("chatInput").value.trim();
@@ -610,10 +799,10 @@ $("sendBtn").onclick = async () => {
   const u = auth.currentUser;
   try {
     const ownerReply = !!chatCtx.appealUid && isOwner();
-    await addMsg(chatCtx.path, text, { from: u.uid, name: myProfile ? myProfile.gameName : "Owner", owner: ownerReply });
+    await addMsg(chatCtx.path, text, { from: u.uid, name: myName(), owner: ownerReply });
     if (ownerReply) await updateDoc(doc(db, "appeals", chatCtx.appealUid), { last: "👑 " + text, time: serverTimestamp(), answered: true });
     $("chatInput").value = "";
-  } catch (e) { say(e.message); }
+  } catch (e) { say(friendly(e)); }
 };
 $("closeChat").onclick = () => {
   if (chatUnsub) chatUnsub();
@@ -624,22 +813,41 @@ $("closeChat").onclick = () => {
 };
 
 // ---------- community room + owner bot ----------
-const RULES_TEXT = "Rules: respect everyone, no insults or threats, no nudity or inappropriate pictures, no scams or fake UIDs.";
+const RULES_TEXT = "Rules: respect everyone, no insults or threats, no nudity or inappropriate pictures, no scams or fake UIDs. See a bad post? Tap the 🚩 under it.";
 function botAnswer(t) {
   const s = t.toLowerCase();
-  if (/\b(ban|banned|restrict|restricted|blocked|suspend)/.test(s))
+  if (/\b(password|forgot|reset|log ?in|sign ?in|can'?t enter|cannot enter)\b/.test(s))
+    return "Login problem? On the first screen type your email, then tap Forgot password. We will send a reset link to your email (check spam too). If the account is restricted, you will see an Appeal box after logging in.";
+  if (/\b(ban|banned|restrict|restricted|blocked|suspend\w*|appeal|unban)\b/.test(s))
     return "If your account is restricted, you will see an Appeal box on your screen. Message the Owner there. Most restrictions last 30 days, and the account comes back by itself when the time ends.";
   if (/\b(rule|rules)\b/.test(s)) return RULES_TEXT;
+  if (/\b(report|reporting|abuse|insult|harass\w*|scam\w*|fake)\b/.test(s))
+    return "To report a bad post, tap the 🚩 under it. To report a player, open his page and tap Report player. The Owner reads every report and can restrict rule breakers.";
+  if (/\b(post|posting|photo|picture|image|upload)\b/.test(s))
+    return "To post: open Home, choose a category (Gaming, Lifestyle or Fun), write your text, tap Add photo if you want, then tap Post. Players can like, 🔥 and comment on it.";
+  if (/\b(categor\w*|lifestyle|fun|gaming)\b/.test(s))
+    return "Home has 3 categories: 🎮 Gaming, 🌍 Lifestyle and 😂 Fun. Choose one when you post, and use the buttons above the feed to filter.";
+  if (/\b(comment|comments|reply)\b/.test(s))
+    return "Tap the 💬 button under any post to read and write comments.";
+  if (/\b(install|download|app|home screen|icon)\b/.test(s))
+    return "To install: on Android Chrome tap Me, then Install app (or the ⋮ menu, then Add to Home screen). On iPhone use Safari, tap Share, then Add to Home Screen.";
+  if (/\b(profile|change name|username|game name|edit)\b/.test(s))
+    return "Open the Me tab, change your game name or UID, then tap Save my profile.";
+  if (/\b(delete|remove)\b/.test(s))
+    return "You can delete your own post with the 🗑 button under it. To delete your whole account, message the Owner.";
   if (/\b(owner|jeffrey|admin|boss)\b/.test(s))
     return "Jeffrey Nwokoleme is the Owner of this community. He is offline now, but he will read your message when he comes online.";
-  if (/\b(friend|request|add)\b/.test(s))
+  if (/\b(friend|friends|request|add)\b/.test(s))
     return "To add a friend: open Players, tap a name, choose Free Fire or Call of Duty, then tap Send request. When he accepts, tap Chat.";
   if (/\buid\b/.test(s))
     return "Every player's game UID is on his page. Tap Players, open a name, and tap Copy UID.";
+  if (/\b(thanks|thank you|thx)\b/.test(s)) return "You are welcome! 🎮";
+  if (/\b(help|menu|what can you do)\b/.test(s))
+    return "I can help with: login and password, restrictions and appeals, rules, reporting, posting, friend requests, UIDs and installing the app. Just ask!";
   if (/\b(hi|hello|hey|good morning|good evening)\b/.test(s))
-    return "Hello! 👋 Welcome to Game Chat Hub. Ask me about rules, friend requests, or UIDs.";
+    return "Hello! 👋 Welcome to Game Chat Hub. Type help to see what I can do.";
   if (s.includes("?"))
-    return "Thanks for your question. The Owner is offline now and will reply when he is back. You can ask me about rules, friend requests, UIDs, or restrictions.";
+    return "Thanks for your question. The Owner is offline now and will reply when he is back. Type help to see what I can answer now.";
   return "";
 }
 $("roomSend").onclick = async () => {
@@ -648,13 +856,13 @@ $("roomSend").onclick = async () => {
   const u = auth.currentUser;
   const name = isOwner() ? "Jeffrey Nwokoleme" : (myProfile ? myProfile.gameName : "Player");
   try {
-    await addMsg(["rooms", "main", "messages"], text, { from: u.uid, name: name, owner: isOwner() });
+    await addMsg(["rooms", "main", "messages"], text, { from: u.uid, name: name, owner: !!isOwner() });
     $("roomInput").value = "";
     if (!isOwner() && !ownerOnline()) {
       const a = botAnswer(text);
       if (a) await addMsg(["rooms", "main", "messages"], a, { from: "bot", name: "Bot" });
     }
-  } catch (e) { say(e.message); }
+  } catch (e) { say(friendly(e)); }
 };
 
 // ---------- admin (owner) ----------
@@ -697,14 +905,44 @@ function renderAppeals() {
     box.appendChild(row);
   });
 }
+function renderReports() {
+  if (!isOwner()) return;
+  const box = $("reportList");
+  box.innerHTML = "";
+  $("repCount").textContent = reports.length ? " (" + reports.length + ")" : "";
+  if (!reports.length) { box.appendChild(mk("p", "mut", "No reports. All clear 🎉")); return; }
+  reports.forEach(r => {
+    const row = mk("div");
+    row.style.cssText = "padding:10px 0;border-top:1px solid var(--line)";
+    row.appendChild(mk("b", "", "🚩 " + (r.targetName || "Player")));
+    row.appendChild(mk("div", "mut", "Reported by " + (r.byName || "Player") + ": " + (r.reason || "no reason given")));
+    if (r.snippet) row.appendChild(mk("div", "uidline", r.snippet));
+    row.appendChild(btn("View page", "ghost", () => showUser(r.targetUid)));
+    if (r.postId) row.appendChild(btn("🗑 Delete post", "red", () => delReportedPost(r)));
+    row.appendChild(btn("🚫 Restrict 30 days", "red", () => ban(players.find(x => x.uid === r.targetUid) || { uid: r.targetUid, gameName: r.targetName || "Player" }, 30)));
+    row.appendChild(btn("Dismiss", "green", () => dismissReport(r.id)));
+    box.appendChild(row);
+  });
+}
+async function delReportedPost(r) {
+  if (!confirm("Delete this post and close the report?")) return;
+  try {
+    await deleteDoc(doc(db, "posts", r.postId));
+    await deleteDoc(doc(db, "reports", r.id));
+  } catch (e) { say(friendly(e)); }
+}
+async function dismissReport(id) {
+  try { await deleteDoc(doc(db, "reports", id)); }
+  catch (e) { say(friendly(e)); }
+}
 async function ban(p, days) {
   if (!confirm("Restrict " + p.gameName + (days ? " for " + days + " days?" : " forever?"))) return;
   try { await setDoc(doc(db, "banned", p.uid), { uid: p.uid, name: p.gameName, until: days ? Date.now() + days * DAY : 0, time: serverTimestamp() }); }
-  catch (e) { say(e.message); }
+  catch (e) { say(friendly(e)); }
 }
 async function unban(uid) {
   try { await deleteDoc(doc(db, "banned", uid)); }
-  catch (e) { say(e.message); }
+  catch (e) { say(friendly(e)); }
 }
 
 // ---------- appeals (restricted player) ----------
@@ -724,7 +962,7 @@ $("appealSend").onclick = async () => {
         : "Hello " + name + "! I am the assistant of Jeffrey Nwokoleme, the Owner. Your account is restricted for breaking the community rules. Your message is saved and the Owner will read it when he is online. Please be patient and respectful.";
       await addMsg(["appeals", u.uid, "messages"], msg, { from: "bot", name: "Bot" });
     }
-  } catch (e) { say(e.message); }
+  } catch (e) { say(friendly(e)); }
 };
 
 // ---------- presence ----------
@@ -741,11 +979,13 @@ async function ping() {
 function stopAll() {
   unsubs.forEach(u => u());
   unsubs = [];
+  Object.keys(cmtUnsubs).forEach(k => cmtUnsubs[k]());
+  cmtUnsubs = {}; cmtData = {}; openCmts = new Set(); drafts = {};
   [chatUnsub, roomUnsub, appealUnsub].forEach(u => { if (u) u(); });
   chatUnsub = roomUnsub = appealUnsub = null;
   if (presenceTimer) { clearInterval(presenceTimer); presenceTimer = null; }
   mainStarted = false;
-  players = []; reqs = {}; posts = []; bans = {}; appeals = [];
+  players = []; reqs = {}; posts = []; bans = {}; appeals = []; reports = [];
   myProfile = null; ownerUid = null; ownerSeen = 0; viewUid = null; chatCtx = null; myBan = null; lastAppealFrom = "";
 }
 
@@ -774,36 +1014,39 @@ function startMain(user, sid) {
     $("meName").textContent = myProfile ? myProfile.gameName : "Welcome";
     $("meAv").textContent = myProfile ? myProfile.gameName.charAt(0).toUpperCase() : "?";
     renderPlayers(); renderFeed();
-  }, e => say(e.message)));
+  }, e => say(friendly(e))));
 
   const rq = query(collection(db, "requests"), where("participants", "array-contains", user.uid));
   unsubs.push(onSnapshot(rq, snap => {
     reqs = {};
     snap.forEach(d => { reqs[d.id] = d.data(); });
     renderPlayers();
-  }, e => say(e.message)));
+  }, e => say(friendly(e))));
 
   const pq = query(collection(db, "posts"), orderBy("time", "desc"), limit(100));
   unsubs.push(onSnapshot(pq, snap => {
     posts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    renderFeed();
-    if (viewUid && !$("tab-user").classList.contains("hidden")) renderUser();
-  }, e => say(e.message)));
+    refreshPosts();
+  }, e => say(friendly(e))));
 
   const rm = query(collection(db, "rooms", "main", "messages"), orderBy("time"), limit(80));
-  roomUnsub = onSnapshot(rm, snap => renderMsgs($("roomLog"), snap), e => say(e.message));
+  roomUnsub = onSnapshot(rm, snap => renderMsgs($("roomLog"), snap), e => say(friendly(e)));
 
   if (isOwner()) {
     unsubs.push(onSnapshot(collection(db, "banned"), snap => {
       bans = {};
       snap.forEach(d => { bans[d.id] = d.data(); });
       renderAdmin();
-    }, e => say(e.message)));
+    }, e => say(friendly(e))));
     unsubs.push(onSnapshot(collection(db, "appeals"), snap => {
       appeals = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       appeals.sort((a, b) => ((b.time && b.time.seconds) || 0) - ((a.time && a.time.seconds) || 0));
       renderAppeals();
-    }, e => say(e.message)));
+    }, e => say(friendly(e))));
+    unsubs.push(onSnapshot(query(collection(db, "reports"), orderBy("time", "desc"), limit(50)), snap => {
+      reports = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderReports();
+    }, e => say(friendly(e))));
   }
 
   ping();
@@ -867,4 +1110,4 @@ onAuthStateChanged(auth, user => {
 });
 </script>
 </body>
-  </html>
+</html>
