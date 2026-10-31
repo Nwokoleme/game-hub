@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="icon-192-1.png">
 <link rel="icon" href="icon-192-1.png">
 <script>window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();window.__ip=e;});</script>
-<style> #rulesModal.hidden{display:none}
+<style>
 :root{--bg:#000;--card:#16181c;--tx:#e7e9ea;--mut:#71767b;--line:#2f3336;--ac:#1d9bf0;--inp:#202327}
 body.light{--bg:#fff;--card:#f7f9f9;--tx:#0f1419;--mut:#536471;--line:#eff3f4;--inp:#eff3f4}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -96,6 +96,7 @@ footer b{color:#f4b400}
 .rbox.bad h3{color:#f4212e}
 .rbox ul{line-height:1.7;font-size:14px}
 #rulesModal{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.8);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:16px 12px}
+#rulesModal.hidden{display:none}
 #rulesModal .card{max-width:520px;width:100%;margin:auto}
 </style>
 </head>
@@ -299,6 +300,13 @@ footer b{color:#f4b400}
       <div class="card">
         <h2>⚙️ My Profile</h2>
         <p id="who" class="mut"></p>
+        <div class="row" style="margin-bottom:6px">
+          <div class="av big" id="meAv2">?</div>
+          <div class="info">
+            <input id="profFile" type="file" accept="image/*" class="hidden">
+            <button id="profBtn" class="ghost">🖼 Change profile picture</button>
+          </div>
+        </div>
         <input id="gameName" placeholder="Your game name" maxlength="30">
         <select id="game">
           <option>Free Fire</option>
@@ -459,9 +467,21 @@ function btn(text, cls, fn) {
   b.onclick = fn;
   return b;
 }
+function setAv(el, name, photo) {
+  if (photo) {
+    el.textContent = "";
+    el.style.backgroundImage = "url(" + photo + ")";
+    el.style.backgroundSize = "cover";
+    el.style.backgroundPosition = "center";
+  } else {
+    el.style.backgroundImage = "";
+    el.textContent = (name || "?").charAt(0).toUpperCase();
+  }
+}
 function avatar(name, uid, big) {
   const a = mk("div", "av" + (big ? " big" : "") + (uid && uid === ownerUid ? " own" : ""), (name || "?").charAt(0).toUpperCase());
   const p = players.find(x => x.uid === uid);
+  if (p && p.photo) setAv(a, name, p.photo);
   if (isOnline(p) || (uid && uid === ownerUid && ownerOnline())) a.appendChild(mk("span", "dot"));
   return a;
 }
@@ -516,6 +536,37 @@ $("saveBtn").onclick = async () => {
     say("");
     showTab("home");
   } catch (e) { say(friendly(e)); }
+};
+
+// ---------- profile picture ----------
+$("profBtn").onclick = () => $("profFile").click();
+$("profFile").onchange = e => {
+  const f = e.target.files[0];
+  e.target.value = "";
+  if (!f) return;
+  const user = auth.currentUser;
+  if (!user) return;
+  if (!myProfile) { say("Save your game name and UID first, then add your picture."); return; }
+  const r = new FileReader();
+  r.onload = () => {
+    const im = new Image();
+    im.onload = async () => {
+      const size = 220;
+      const c = document.createElement("canvas");
+      c.width = size; c.height = size;
+      const m = Math.min(im.width, im.height);
+      const sx = (im.width - m) / 2, sy = (im.height - m) / 2;
+      c.getContext("2d").drawImage(im, sx, sy, m, m, 0, 0, size, size);
+      const data = c.toDataURL("image/jpeg", 0.75);
+      try {
+        await updateDoc(doc(db, "players", user.uid), { photo: data });
+        say("");
+        $("profBtn").textContent = "🖼 Change profile picture";
+      } catch (err) { say(friendly(err)); }
+    };
+    im.src = r.result;
+  };
+  r.readAsDataURL(f);
 };
 
 // ---------- posts ----------
@@ -1102,7 +1153,8 @@ function startMain(user, sid) {
     players = snap.docs.map(d => d.data());
     myProfile = players.find(p => p.uid === user.uid) || null;
     $("meName").textContent = myProfile ? myProfile.gameName : "Welcome";
-    $("meAv").textContent = myProfile ? myProfile.gameName.charAt(0).toUpperCase() : "?";
+    setAv($("meAv"), myProfile ? myProfile.gameName : "?", myProfile && myProfile.photo);
+    setAv($("meAv2"), myProfile ? myProfile.gameName : "?", myProfile && myProfile.photo);
     renderPlayers(); renderFeed();
   }, e => say(friendly(e))));
 
