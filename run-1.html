@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b0d14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Loot Run - Game Chat Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0b0d14;
+    --road:#1a1d29;
+    --amber:#ffb340;
+    --blue:#3b7bff;
+    --red:#ff3b4a;
+    --paper:#f2efe8;
+    --muted:#9aa0b8;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{
+    margin:0;height:100%;background:var(--ink);color:var(--paper);
+    font-family:"Barlow Condensed","Arial Narrow","Helvetica Neue",system-ui,sans-serif;
+    overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;
+  }
+  #wrap{position:relative;height:100vh;height:100dvh;max-width:520px;margin:0 auto;overflow:hidden}
+  canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+
+  .hud{
+    position:absolute;left:0;right:0;top:0;display:flex;align-items:flex-start;justify-content:space-between;
+    padding:calc(env(safe-area-inset-top,0px) + 12px) 14px 0;pointer-events:none;z-index:3;
+  }
+  .hud > *{pointer-events:auto}
+  .pill{
+    background:rgba(11,13,20,.55);color:var(--paper);border:1px solid rgba(242,239,232,.18);
+    border-radius:999px;padding:6px 14px;font:inherit;font-weight:600;font-size:18px;letter-spacing:.02em;
+    text-decoration:none;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);cursor:pointer;
+  }
+  .score{text-align:center;line-height:1;text-shadow:0 2px 12px rgba(0,0,0,.6)}
+  .score b{font-size:54px;font-weight:800;letter-spacing:.01em}
+  .score i{font-style:normal;font-size:20px;font-weight:600;margin-left:4px;color:var(--amber)}
+  .right{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+  .loot{color:var(--amber)}
+
+  .overlay{
+    position:absolute;inset:0;z-index:4;display:flex;flex-direction:column;justify-content:flex-end;
+    padding:24px 22px calc(env(safe-area-inset-bottom,0px) + 26px);
+    background:linear-gradient(to top,rgba(11,13,20,.96) 0%,rgba(11,13,20,.84) 52%,rgba(11,13,20,.15) 100%);
+  }
+  .overlay.hidden{display:none}
+  .brand{color:var(--muted);font-size:18px;font-weight:600;margin:0 0 4px}
+  h1,h2{margin:0;font-weight:800;line-height:.88;letter-spacing:.01em}
+  h1{font-size:clamp(72px,24vw,118px);text-transform:uppercase}
+  h2{font-size:clamp(60px,20vw,96px);text-transform:uppercase}
+  .tracer{height:4px;width:120px;margin:14px 0 16px;border-radius:2px;
+    background:linear-gradient(90deg,var(--amber),rgba(255,179,64,0))}
+  .lead{margin:0 0 18px;font-size:23px;line-height:1.2;font-weight:600;max-width:20em}
+  .controls{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;margin:0 0 18px;font-size:21px;font-weight:600}
+  .controls dt{color:var(--amber)}
+  .controls dd{margin:0}
+  .best{margin:0 0 16px;color:var(--muted);font-size:20px;font-weight:600}
+  .actions{display:flex;flex-direction:column;gap:10px}
+  .go{
+    display:block;width:100%;text-align:center;text-decoration:none;cursor:pointer;
+    font:inherit;font-weight:800;font-size:30px;letter-spacing:.04em;text-transform:uppercase;
+    padding:14px 18px;border-radius:14px;border:0;background:var(--amber);color:#1a1205;
+  }
+  .go:active{transform:translateY(1px)}
+  .go.ghost{background:transparent;color:var(--paper);border:1.5px solid rgba(242,239,232,.35);font-size:24px}
+  .keys{margin:12px 0 0;text-align:center;color:var(--muted);font-size:17px;font-weight:600}
+  :focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c"></canvas>
+
+  <div class="hud">
+    <a class="pill" href="index.html" aria-label="Back to Game Chat Hub">&lsaquo; Hub</a>
+    <div class="score" aria-live="off"><b id="score">0</b><i>m</i></div>
+    <div class="right">
+      <button class="pill" id="mute" type="button">Sound on</button>
+      <span class="pill loot"><span id="loot">0</span> loot</span>
+    </div>
+  </div>
+
+  <section id="menu" class="overlay" aria-label="Loot Run start">
+    <p class="brand">Game Chat Hub</p>
+    <h1>Loot<br>Run</h1>
+    <div class="tracer"></div>
+    <p class="lead">You grabbed the bag and the cops opened fire. One hit and you're out.</p>
+    <dl class="controls">
+      <dt>Swipe sideways</dt><dd>Change lane</dd>
+      <dt>Swipe up</dt><dd>Jump over low shots</dd>
+      <dt>Swipe down</dt><dd>Slide under high shots</dd>
+    </dl>
+    <p class="best" id="bestMenu">Best: 0 m</p>
+    <div class="actions">
+      <button class="go" id="startBtn" type="button">Run</button>
+    </div>
+    <p class="keys">On a computer: arrow keys or W A S D</p>
+  </section>
+
+  <section id="over" class="overlay hidden" aria-label="Game over">
+    <p class="brand" id="overTag">Loot Run</p>
+    <h2>You're<br>out</h2>
+    <div class="tracer"></div>
+    <p class="lead" id="overText"></p>
+    <p class="best" id="bestOver"></p>
+    <div class="actions">
+      <button class="go" id="againBtn" type="button">Run again</button>
+      <a class="go ghost" href="index.html">Back to hub</a>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ---------- setup ---------- */
+  const cv = document.getElementById('c');
+  const ctx = cv.getContext('2d');
+  const $ = id => document.getElementById(id);
+  const menuEl = $('menu'), overEl = $('over');
+  let W = 0, H = 0, HZ = 0, BY = 0, LW = 0;
+
+  function resize() {
+    const r = cv.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = r.width; H = r.height;
+    cv.width = Math.round(W * dpr);
+    cv.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    HZ = H * 0.33;   // horizon line
+    BY = H * 0.84;   // where the runner's feet land
+    LW = W * 0.30;   // lane width at the player's depth
+  }
+  addEventListener('resize', resize);
+  resize();
+
+  // z = distance ahead of the runner. Perspective scale: 1 at the runner, smaller far away.
+  const proj = (lane, z) => {
+    const s = 1 / (1 + z / 9);
+    return { x: W / 2 + lane * LW * s, y: HZ + (BY - HZ) * s, s };
+  };
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const rnd = n => { const x = Math.sin(n * 127.1) * 43758.5453; return x - Math.floor(x); };
+
+  /* ---------- state ---------- */
+  let state = 'menu';           // menu | play | dead
+  let time = 0, scroll = 0, dist = 0, loot = 0, elapsed = 0;
+  let best = 0, isNewBest = false;
+  try { best = +localStorage.getItem('lootrun_best') || 0; } catch (e) {}
+  let bullets = [], coinArr = [];
+  let spawnT = 1.1, coinT = 1.8;
+  let shake = 0, hitFlash = 0;
+  const flash = [0, 0, 0];
+  const P = { lane: 0, x: 0, jy: 0, vy: 0, slide: 0, run: 0, dead: 0 };
+
+  const stars = Array.from({ length: 46 }, (_, i) => ({ x: rnd(i + 1), y: rnd(i + 50), r: 0.6 + rnd(i + 99) * 1.2 }));
+  const score = () => Math.floor(dist) + loot * 10;
+
+  function reset() {
+    Object.assign(P, { lane: 0, x: 0, jy: 0, vy: 0, slide: 0, dead: 0 });
+    bullets = []; coinArr = [];
+    dist = 0; loot = 0; elapsed = 0; spawnT = 1.1; coinT = 1.8;
+    shake = 0; hitFlash = 0; isNewBest = false;
+  }
+
+  /* ---------- audio ---------- */
+  let ac = null, muted = false;
+  function ensureAudio() {
+    if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+    if (ac && ac.state === 'suspended') ac.resume();
+  }
+  function tone(f1, f2, d, type, v) {
+    if (!ac || muted) return;
+    const t0 = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(f1, t0);
+    o.frequency.exponentialRampToValueAtTime(Math.max(30, f2), t0 + d);
+    g.gain.setValueAtTime(v, t0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+    o.connect(g); g.connect(ac.destination);
+    o.start(t0); o.stop(t0 + d);
+  }
+  function noise(d, v) {
+    if (!ac || muted) return;
+    const n = Math.floor(ac.sampleRate * d), buf = ac.createBuffer(1, n, ac.sampleRate), data = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / n);
+    const src = ac.createBufferSource(), g = ac.createGain();
+    src.buffer = buf; g.gain.value = v;
+    src.connect(g); g.connect(ac.destination); src.start();
+  }
+  const sfx = {
+    coin() { tone(880, 1500, .12, 'square', .04); },
+    jump() { tone(300, 700, .15, 'sine', .07); },
+    slide() { tone(500, 200, .15, 'sine', .06); },
+    shot() { tone(220, 60, .12, 'sawtooth', .025); },
+    hit() { noise(.45, .2); tone(160, 40, .4, 'sawtooth', .1); }
+  };
+  $('mute').addEventListener('click', () => {
+    muted = !muted;
+    $('mute').textContent = muted ? 'Sound off' : 'Sound on';
+  });
+
+  /* ---------- game logic ---------- */
+  function spawn(diff) {
+    const lanes = [-1, 0, 1].sort(() => Math.random() - 0.5);
+    const n = (elapsed > 12 && Math.random() < 0.3 + 0.2 * diff) ? 2 : 1;
+    for (let i = 0; i < n; i++) {
+      const r = Math.random();
+      const type = r < 0.5 ? 'mid' : r < 0.75 ? 'low' : 'high';
+      bullets.push({ lane: lanes[i], z: 78, pz: 78, type, v: 16 + 10 * diff });
+      flash[lanes[i] + 1] = 0.12;
+    }
+    sfx.shot();
+  }
+  function spawnCoins() {
+    const lane = [-1, 0, 1][Math.floor(Math.random() * 3)];
+    for (let i = 0; i < 5; i++) coinArr.push({ lane, z: 78 + i * 3, got: false });
+  }
+  function hits(b) {
+    if (Math.abs(P.x - b.lane) > 0.45) return false;
+    if (b.type === 'low') return P.jy < 0.4;                          // jump over it
+    if (b.type === 'high') return !(P.slide > 0 && P.jy < 0.05);      // slide under it
+    return true;                                                       // chest height: change lane
+  }
+  function die() {
+    state = 'dead';
+    P.dead = 0; shake = 1; hitFlash = 1;
+    sfx.hit();
+    const sc = score();
+    isNewBest = sc > best;
+    if (isNewBest) { best = sc; try { localStorage.setItem('lootrun_best', String(best)); } catch (e) {} }
+    setTimeout(showOver, 750);
+  }
+  function showOver() {
+    if (state !== 'dead') return;
+    $('overText').textContent = 'You ran ' + Math.floor(dist) + ' m and grabbed ' + loot + ' loot.';
+    $('bestOver').textContent = isNewBest ? 'New best: ' + best + ' m' : 'Best: ' + best + ' m';
+    overEl.classList.remove('hidden');
+    $('againBtn').focus({ preventScroll: true });
+  }
+  function start() {
+    ensureAudio();
+    reset();
+    state = 'play';
+    menuEl.classList.add('hidden');
+    overEl.classList.add('hidden');
+  }
+  function act(a) {
+    if (state !== 'play') return;
+    if (a === 'L') P.lane = Math.max(-1, P.lane - 1);
+    if (a === 'R') P.lane = Math.min(1, P.lane + 1);
+    if (a === 'U' && P.jy === 0) { P.vy = 5.4; P.slide = 0; sfx.jump(); }
+    if (a === 'D') {
+      if (P.jy > 0) P.vy = -10;      // drop fast
+      P.slide = 0.6; sfx.slide();
+    }
+  }
+
+  function update(dt) {
+    time += dt;
+    const play = state === 'play';
+    const diff = Math.min(1, elapsed / 90);
+    const speed = play ? 15 + 11 * diff : (state === 'menu' ? 7 : 0);
+    scroll += speed * dt;
+    for (let i = 0; i < 3; i++) if (flash[i] > 0) flash[i] -= dt;
+    shake = Math.max(0, shake - dt * 1.5);
+    hitFlash = Math.max(0, hitFlash - dt * 2.2);
+    if (state === 'dead') { P.dead += dt; return; }
+
+    P.x += (P.lane - P.x) * Math.min(1, dt * 14);
+    if (P.jy > 0 || P.vy > 0) {
+      P.vy -= 15 * dt;
+      P.jy += P.vy * dt;
+      if (P.jy <= 0) { P.jy = 0; P.vy = 0; }
+    }
+    if (P.slide > 0) P.slide -= dt;
+    P.run += dt * speed * 0.75;
+    if (!play) return;
+
+    elapsed += dt;
+    dist += speed * dt * 0.4;
+
+    spawnT -= dt;
+    if (spawnT <= 0) { spawn(diff); spawnT = 1.15 - 0.6 * diff + Math.random() * 0.35; }
+    coinT -= dt;
+    if (coinT <= 0) { spawnCoins(); coinT = 2.4 + Math.random() * 1.8; }
+
+    for (const b of bullets) {
+      b.pz = b.z;
+      b.z -= (speed + b.v) * dt;
+      if (b.pz > -0.7 && b.z < 0.7 && hits(b)) { die(); return; }
+    }
+    bullets = bullets.filter(b => b.z > -1);
+
+    for (const c of coinArr) {
+      c.z -= speed * dt;
+      if (!c.got && c.z < 0.8 && c.z > -0.8 && Math.abs(P.x - c.lane) < 0.55) { c.got = true; loot++; sfx.coin(); }
+    }
+    coinArr = coinArr.filter(c => !c.got && c.z > -1.5);
+  }
+
+  /* ---------- drawing ---------- */
+  function rr(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  function circle(x, y, r) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); }
+
+  function drawSky() {
+    ctx.fillStyle = '#0b0d14';
+    ctx.fillRect(-30, -30, W + 60, H + 60);
+    const g = ctx.createLinearGradient(0, 0, 0, HZ);
+    g.addColorStop(0, '#080a12');
+    g.addColorStop(1, '#1d2142');
+    ctx.fillStyle = g;
+    ctx.fillRect(-30, -30, W + 60, HZ + 30);
+    ctx.fillStyle = 'rgba(242,239,232,.8)';
+    for (const s of stars) circle(s.x * W, s.y * HZ * 0.8, s.r);
+    ctx.fillStyle = 'rgba(242,239,232,.92)';
+    circle(W * 0.78, HZ * 0.34, W * 0.06);
+    ctx.fillStyle = 'rgba(11,13,20,.22)';
+    circle(W * 0.765, HZ * 0.32, W * 0.018);
+  }
+
+  function drawGround() {
+    ctx.fillStyle = '#10131c';
+    ctx.fillRect(-30, HZ, W + 60, H - HZ + 30);
+
+    const far = 90, near = -3;
+    // sidewalks
+    ctx.fillStyle = '#242839';
+    for (const side of [-1, 1]) {
+      const a = proj(side * 1.5, far), b = proj(side * 1.9, far), c = proj(side * 1.9, near), d = proj(side * 1.5, near);
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.closePath(); ctx.fill();
+    }
+    // road
+    ctx.fillStyle = '#1a1d29';
+    const r1 = proj(-1.5, far), r2 = proj(1.5, far), r3 = proj(1.5, near), r4 = proj(-1.5, near);
+    ctx.beginPath(); ctx.moveTo(r1.x, r1.y); ctx.lineTo(r2.x, r2.y); ctx.lineTo(r3.x, r3.y); ctx.lineTo(r4.x, r4.y); ctx.closePath(); ctx.fill();
+
+    // edge lines
+    ctx.strokeStyle = 'rgba(255,179,64,.55)';
+    ctx.lineWidth = 2;
+    for (const side of [-1, 1]) {
+      const a = proj(side * 1.5, far), b = proj(side * 1.5, near);
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    }
+    // lane dashes
+    ctx.fillStyle = 'rgba(242,239,232,.5)';
+    const dseg = 6, dOff = scroll % dseg;
+    for (let k = 0; k < 16; k++) {
+      const z1 = Math.max(-2.5, k * dseg - dOff), z2 = k * dseg - dOff + 2.6;
+      if (z2 <= -2.5) continue;
+      for (const l of [-0.5, 0.5]) {
+        const a = proj(l, z1), b = proj(l, z2);
+        const w1 = 0.035 * LW * a.s, w2 = 0.035 * LW * b.s;
+        ctx.beginPath();
+        ctx.moveTo(a.x - w1, a.y); ctx.lineTo(a.x + w1, a.y);
+        ctx.lineTo(b.x + w2, b.y); ctx.lineTo(b.x - w2, b.y);
+        ctx.closePath(); ctx.fill();
+      }
+    }
+  }
+
+  function policeGlow() {
+    const flick = Math.floor(time * 6) % 2;
+    const col = flick ? '59,123,255' : '255,59,74';
+    const g = ctx.createRadialGradient(W / 2, HZ, 0, W / 2, HZ, W * 0.85);
+    g.addColorStop(0, 'rgba(' + col + ',.30)');
+    g.addColorStop(1, 'rgba(' + col + ',0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(-30, -30, W + 60, H + 60);
+  }
+
+  const WALLS = ['#161a2b', '#1a1f33', '#12162a'];
+  function drawWall(side, z1, z2, bh, idx) {
+    const lane = side * 1.9;
+    const a = proj(lane, z1), b = proj(lane, z2);
+    const h1 = bh * LW * a.s, h2 = bh * LW * b.s;
+    ctx.fillStyle = WALLS[idx % 3 < 0 ? 0 : idx % 3];
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(b.x, b.y - h2); ctx.lineTo(a.x, a.y - h1);
+    ctx.closePath(); ctx.fill();
+    // windows
+    const rows = Math.max(2, Math.floor(bh * 1.2));
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < 3; col++) {
+        if (rnd(idx * 7.3 + row * 3.1 + col * 1.7 + side) < 0.5) continue;
+        const u = 0.2 + col * 0.3;
+        const s = lerp(a.s, b.s, u);
+        const x = lerp(a.x, b.x, u);
+        const yb = lerp(a.y, b.y, u);
+        const h = lerp(h1, h2, u);
+        const y = yb - ((row + 0.5) / rows) * h * 0.92 - h * 0.04;
+        ctx.fillStyle = 'rgba(255,179,64,.75)';
+        ctx.fillRect(x - LW * 0.11 * s, y - LW * 0.14 * s, LW * 0.22 * s, LW * 0.28 * s);
+      }
+    }
+  }
+  function drawCity() {
+    const seg = 8, n = 10;
+    const off = scroll % seg, base = Math.floor(scroll / seg);
+    for (let i = n; i >= 0; i--) {
+      const z1 = Math.max(0.3, i * seg - off), z2 = i * seg - off + seg;
+      if (z2 <= 0.3) continue;
+      const idx = base + i;
+      for (const side of [-1, 1]) {
+        const r = rnd(idx * 2 + (side > 0 ? 1 : 0) * 13.7);
+        drawWall(side, z1, z2, 3 + r * 4, idx + (side > 0 ? 1 : 0));
+      }
+    }
+  }
+
+  function drawCops() {
+    const flick = Math.floor(time * 7) % 2;
+    [-1.4, -0.7, 0, 0.7, 1.4].forEach((l, i) => {
+      const p = proj(l, 78), u = LW * p.s;
+      ctx.fillStyle = '#07080d';
+      rr(p.x - 0.5 * u, p.y - 0.36 * u, 1.0 * u, 0.34 * u, 0.06 * u); ctx.fill();
+      const leftBlue = (i + flick) % 2 === 0;
+      ctx.fillStyle = leftBlue ? 'rgba(59,123,255,.45)' : 'rgba(255,59,74,.45)';
+      circle(p.x, p.y - 0.36 * u, 0.7 * u);
+      ctx.fillStyle = '#3b7bff'; ctx.fillRect(p.x - 0.3 * u, p.y - 0.42 * u, 0.28 * u, 0.07 * u);
+      ctx.fillStyle = '#ff3b4a'; ctx.fillRect(p.x + 0.02 * u, p.y - 0.42 * u, 0.28 * u, 0.07 * u);
+    });
+    for (let i = 0; i < 3; i++) {
+      if (flash[i] > 0) {
+        const p = proj(i - 1, 77), u = LW * p.s, a = flash[i] / 0.12;
+        ctx.fillStyle = 'rgba(255,230,150,' + (0.35 * a) + ')';
+        circle(p.x, p.y - 0.3 * u, 0.9 * u);
+        ctx.fillStyle = 'rgba(255,250,220,' + a + ')';
+        circle(p.x, p.y - 0.3 * u, 0.28 * u);
+      }
+    }
+  }
+
+  function drawBullet(b) {
+    const hf = { low: 0.1, mid: 0.5, high: 0.8 }[b.type] * 0.95;
+    const p = proj(b.lane, b.z), q = proj(b.lane, b.z + 4);
+    const y1 = p.y - hf * LW * p.s, y2 = q.y - hf * LW * q.s;
+    const g = ctx.createLinearGradient(p.x, y1, q.x, y2);
+    g.addColorStop(0, 'rgba(255,214,120,.95)');
+    g.addColorStop(1, 'rgba(255,179,64,0)');
+    ctx.strokeStyle = g;
+    ctx.lineWidth = Math.max(2, 0.1 * LW * p.s);
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(p.x, y1); ctx.lineTo(q.x, y2); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,179,64,.28)';
+    circle(p.x, y1, 0.28 * LW * p.s);
+    ctx.fillStyle = '#fff6d0';
+    circle(p.x, y1, Math.max(2, 0.075 * LW * p.s));
+  }
+
+  function drawCoin(c) {
+    const p = proj(c.lane, c.z), u = LW * p.s;
+    const sx = Math.max(0.15, Math.abs(Math.cos(time * 6 + c.z * 0.4)));
+    const y = p.y - 0.4 * u;
+    ctx.fillStyle = '#ffb340';
+    ctx.beginPath(); ctx.ellipse(p.x, y, 0.13 * u * sx, 0.13 * u, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffe08a';
+    ctx.beginPath(); ctx.ellipse(p.x, y, 0.07 * u * sx, 0.07 * u, 0, 0, Math.PI * 2); ctx.fill();
+  }
+
+  function drawPlayer() {
+    const p = proj(P.x, 0), u = LW * 0.95;
+    const sl = P.slide > 0 && P.jy < 0.05;
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,.4)';
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y, u * 0.26 * (1 - Math.min(0.5, P.jy * 0.5)), u * 0.06, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.translate(p.x, p.y - P.jy * u);
+    if (state === 'dead') { ctx.rotate(Math.min(1.3, P.dead * 3)); ctx.globalAlpha = Math.max(0.25, 1 - P.dead); }
+    if (sl) ctx.scale(1.15, 0.55);
+
+    const s = Math.sin(P.run), air = P.jy > 0.02;
+    const l1 = air ? 0.1 : Math.max(0, s) * 0.13;
+    const l2 = air ? 0.02 : Math.max(0, -s) * 0.13;
+
+    // legs + shoes
+    ctx.fillStyle = '#232738';
+    ctx.fillRect(-0.17 * u, -0.38 * u, 0.14 * u, 0.38 * u - l1 * u);
+    ctx.fillRect(0.03 * u, -0.38 * u, 0.14 * u, 0.38 * u - l2 * u);
+    ctx.fillStyle = '#f2efe8';
+    ctx.fillRect(-0.19 * u, -l1 * u - 0.06 * u, 0.18 * u, 0.06 * u);
+    ctx.fillRect(0.01 * u, -l2 * u - 0.06 * u, 0.18 * u, 0.06 * u);
+
+    // arms
+    ctx.fillStyle = '#3a4160';
+    ctx.fillRect(-0.29 * u, -0.76 * u + s * 0.04 * u, 0.08 * u, 0.3 * u);
+    ctx.fillRect(0.21 * u, -0.76 * u - s * 0.04 * u, 0.08 * u, 0.3 * u);
+    // torso
+    ctx.fillStyle = '#3a4160';
+    rr(-0.2 * u, -0.8 * u, 0.4 * u, 0.46 * u, 0.08 * u); ctx.fill();
+
+    // loot bag
+    const bounce = Math.abs(s) * 0.02 * u;
+    ctx.fillStyle = '#c9a55c';
+    rr(-0.17 * u, -0.72 * u - bounce, 0.34 * u, 0.3 * u, 0.1 * u); ctx.fill();
+    ctx.fillStyle = '#8f7433';
+    ctx.fillRect(-0.06 * u, -0.74 * u - bounce, 0.12 * u, 0.04 * u);
+    ctx.fillStyle = '#4a3a14';
+    ctx.font = '800 ' + (0.2 * u) + 'px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('$', 0, -0.5 * u - bounce);
+
+    // head + beanie
+    ctx.fillStyle = '#2a2018';
+    circle(0, -0.9 * u, 0.12 * u);
+    ctx.fillStyle = '#ffb340';
+    ctx.beginPath(); ctx.arc(0, -0.92 * u, 0.125 * u, Math.PI, 0); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawObjects() {
+    const list = [];
+    for (const b of bullets) if (b.z >= 0) list.push({ z: b.z, d: () => drawBullet(b) });
+    for (const c of coinArr) if (c.z >= 0) list.push({ z: c.z, d: () => drawCoin(c) });
+    list.sort((a, b) => b.z - a.z);
+    for (const o of list) o.d();
+  }
+
+  function draw() {
+    ctx.save();
+    if (shake > 0) ctx.translate((Math.random() - 0.5) * 14 * shake, (Math.random() - 0.5) * 14 * shake);
+    drawSky();
+    drawGround();
+    policeGlow();
+    drawCity();
+    drawCops();
+    drawObjects();
+    drawPlayer();
+    ctx.restore();
+    if (hitFlash > 0) {
+      ctx.fillStyle = 'rgba(255,59,74,' + (hitFlash * 0.4) + ')';
+      ctx.fillRect(0, 0, W, H);
+    }
+    $('score').textContent = score();
+    $('loot').textContent = loot;
+  }
+
+  /* ---------- input ---------- */
+  let sx = 0, sy = 0, tracking = false;
+  cv.addEventListener('pointerdown', e => { sx = e.clientX; sy = e.clientY; tracking = true; });
+  cv.addEventListener('pointermove', e => {
+    if (!tracking) return;
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 26) return;
+    if (Math.abs(dx) > Math.abs(dy)) act(dx > 0 ? 'R' : 'L');
+    else act(dy < 0 ? 'U' : 'D');
+    sx = e.clientX; sy = e.clientY;   // allow chained swipes in one drag
+  });
+  const endTouch = () => { tracking = false; };
+  cv.addEventListener('pointerup', endTouch);
+  cv.addEventListener('pointercancel', endTouch);
+
+  addEventListener('keydown', e => {
+    const k = e.code;
+    if (k === 'Space' || k === 'Enter') {
+      const overVisible = !overEl.classList.contains('hidden');
+      if (state === 'menu' || (state === 'dead' && overVisible)) { e.preventDefault(); start(); return; }
+      if (k === 'Space') { e.preventDefault(); act('U'); }
+      return;
+    }
+    if (k === 'ArrowLeft' || k === 'KeyA') act('L');
+    else if (k === 'ArrowRight' || k === 'KeyD') act('R');
+    else if (k === 'ArrowUp' || k === 'KeyW') { e.preventDefault(); act('U'); }
+    else if (k === 'ArrowDown' || k === 'KeyS') { e.preventDefault(); act('D'); }
+  });
+
+  $('startBtn').addEventListener('click', start);
+  $('againBtn').addEventListener('click', start);
+  $('bestMenu').textContent = 'Best: ' + best + ' m';
+
+  /* ---------- loop ---------- */
+  let last = 0;
+  function frame(ts) {
+    const dt = Math.min(0.033, (ts - last) / 1000 || 0);
+    last = ts;
+    update(dt);
+    draw();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+<script>
+document.querySelectorAll('a[href="index.html"]').forEach(function (a) {
+  a.addEventListener('click', function (e) {
+    if (window.parent !== window) { e.preventDefault(); window.parent.postMessage('closeGame', location.origin); }
+  });
+});
+</script>
+</body>
+</html>
