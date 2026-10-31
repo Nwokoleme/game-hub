@@ -145,7 +145,7 @@ nav button.on svg{stroke-width:2.7}
 #postText{background:transparent;border:none;font-size:19px;height:84px;padding:8px 2px}
 #postText:focus{outline:none}
 #postCat{width:auto;display:inline-block;background:transparent;border:1px solid var(--line);border-radius:20px;padding:6px 12px;font-size:14px;color:var(--ac)}
-#photoBtn{width:auto;display:inline-block;padding:9px 16px;font-size:14px;margin-right:8px}
+#photoBtn,#camBtn{width:auto;display:inline-block;padding:9px 16px;font-size:14px;margin-right:8px}
 #postBtn{width:auto;display:inline-block;padding:9px 28px;font-size:15px}
 
 /* category tabs like X */
@@ -204,6 +204,42 @@ nav button.on svg{stroke-width:2.7}
 #roomChat.full #roomIntro{display:none}
 #roomChat.full #roomLog{flex:1;height:auto;min-height:0;border-radius:0;margin:0}
 #roomChat.full .composer{padding:8px 10px calc(8px + env(safe-area-inset-bottom));background:var(--bg);border-top:1px solid var(--line)}
+
+/* ---- Loot Run card + camera ---- */
+.gameCard{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--tx);background:linear-gradient(90deg,rgba(255,179,64,.16),var(--card) 70%);border-color:rgba(255,179,64,.45)}
+.gameCard .gcIcon{font-size:30px;line-height:1}
+.gameCard .gcTxt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.gameCard .gcTxt b{font-size:16px}
+.gameCard .gcGo{background:#ffb340;color:#1a1205;font-weight:bold;font-size:14px;padding:8px 16px;border-radius:20px}
+#camModal{position:fixed;inset:0;z-index:70;background:#000;display:flex;flex-direction:column}
+#camModal.hidden{display:none}
+#camVideo,#camShot{flex:1;min-height:0;width:100%;object-fit:contain;background:#000;display:block}
+#camVideo.front{transform:scaleX(-1)}
+#camModal .hidden{display:none}
+.camMsg{position:absolute;left:0;right:0;top:calc(env(safe-area-inset-top,0px) + 16px);text-align:center;color:#fff;font-size:14px;text-shadow:0 1px 6px #000;pointer-events:none}
+.camBar{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px calc(env(safe-area-inset-bottom,0px) + 22px);background:linear-gradient(to top,rgba(0,0,0,.7),rgba(0,0,0,0))}
+#camModal button{width:auto;margin:0;display:inline-block}
+#camModal .camSide{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:22px;padding:11px 20px;font-size:15px;min-width:84px}
+#camModal .shutter{width:76px;height:76px;padding:0;border-radius:50%;background:#fff;border:5px solid rgba(255,255,255,.45);box-shadow:inset 0 0 0 3px #000}
+#camModal .shutter:active{transform:scale(.92)}
+#camModal .camUse{background:#00ba7c;color:#fff;border:0;border-radius:22px;padding:12px 26px;font-size:16px;font-weight:bold}
+
+/* ---- quick buttons + Jux ---- */
+.quick{display:flex;gap:8px}
+.quick button{flex:1;margin:12px 0 0;padding:11px;font-size:15px}
+#juxModal{position:fixed;inset:0;z-index:65;background:var(--bg);display:flex;flex-direction:column;height:100dvh}
+#juxModal.hidden{display:none}
+.juxHead{display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top,0px) + 10px) 14px 10px;border-bottom:1px solid var(--line)}
+.juxHead b{font-size:18px}
+.juxHead .mut{flex:1}
+.juxHead button{width:auto;margin:0;padding:8px 16px;font-size:14px}
+.juxLog{flex:1;overflow-y:auto;padding:12px}
+.jb{max-width:86%;padding:10px 13px;border-radius:16px;margin:6px 0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.4;font-size:15px}
+.jb.me{margin-left:auto;background:var(--me-bg);color:var(--me-tx)}
+.jb.jux{background:var(--in-bg);color:var(--tx);border:1px solid var(--line)}
+.juxBar{display:flex;gap:8px;padding:10px 12px calc(env(safe-area-inset-bottom,0px) + 10px);border-top:1px solid var(--line)}
+.juxBar input{flex:1;margin:0;min-width:0;border-radius:22px;padding:11px 16px}
+.juxBar button{width:auto;margin:0;padding:11px 20px;border-radius:22px}
 </style>
 </head>
 <body>
@@ -290,6 +326,15 @@ nav button.on svg{stroke-width:2.7}
   <div id="app" class="hidden">
 
     <div id="tab-home">
+      <div class="quick">
+        <button id="quickSnap" class="ghost" type="button">📸 Snap a photo</button>
+        <button id="quickJux" class="ghost" type="button">✨ Ask Jux</button>
+      </div>
+      <a class="card gameCard" href="run.html">
+        <span class="gcIcon">🎮</span>
+        <span class="gcTxt"><b>Play Loot Run</b><span class="mut" id="gcBest">Dodge the bullets. How far can you run?</span></span>
+        <span class="gcGo">Play</span>
+      </a>
       <div class="card">
         <div class="mut" style="margin-bottom:6px">🟢 Players online</div>
         <div id="strip" class="strip"></div>
@@ -307,6 +352,7 @@ nav button.on svg{stroke-width:2.7}
         <textarea id="postText" maxlength="300" placeholder="I just defeated a squad! 🔥"></textarea>
         <img id="preview" class="hidden">
         <input id="photoFile" type="file" accept="image/*" class="hidden">
+        <button id="camBtn" class="ghost">🤳 Take photo</button>
         <button id="photoBtn" class="ghost">📷 Add photo</button>
         <button id="postBtn">Post</button>
       </div>
@@ -485,6 +531,27 @@ nav button.on svg{stroke-width:2.7}
     <button id="wpOwn" class="ghost">📷 Use my own picture</button>
     <div id="wpNote" class="status"></div>
     <button id="wpClose" class="green">Done</button>
+  </div>
+</div>
+
+<div id="juxModal" class="hidden">
+  <div class="juxHead"><b>✨ Jux</b><span class="mut" id="juxLeft"></span><button id="juxClose" class="ghost" type="button">Close</button></div>
+  <div id="juxLog" class="juxLog"></div>
+  <div class="juxBar"><input id="juxInput" placeholder="Ask Jux anything" maxlength="500" autocomplete="off"><button id="juxSend" type="button">Ask</button></div>
+</div>
+
+<div id="camModal" class="hidden">
+  <video id="camVideo" autoplay playsinline muted></video>
+  <img id="camShot" class="hidden" alt="Your photo">
+  <div id="camMsg" class="camMsg"></div>
+  <div class="camBar" id="camLive">
+    <button id="camClose" class="camSide" type="button">Close</button>
+    <button id="camSnap" class="shutter" type="button" aria-label="Take photo"></button>
+    <button id="camFlip" class="camSide" type="button">Flip</button>
+  </div>
+  <div class="camBar hidden" id="camReview">
+    <button id="camRetake" class="camSide" type="button">Retake</button>
+    <button id="camUse" class="camUse" type="button">Use photo</button>
   </div>
 </div>
 
@@ -730,27 +797,162 @@ $("profFile").onchange = e => {
 
 // ---------- posts ----------
 $("photoBtn").onclick = () => $("photoFile").click();
+
+// Shrinks a picture for posting. Bigger and sharper than before (up to 1080px, high JPEG quality),
+// and only shrinks more if the picture would be too large to save in the database.
+function makePostImage(srcEl, sw, sh) {
+  let maxDim = 1080, q = 0.82, out = "";
+  for (let i = 0; i < 8; i++) {
+    const s = Math.min(1, maxDim / Math.max(sw, sh));
+    const w = Math.max(1, Math.round(sw * s)), h = Math.max(1, Math.round(sh * s));
+    const c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    const g = c.getContext("2d");
+    g.imageSmoothingQuality = "high";
+    g.drawImage(srcEl, 0, 0, w, h);
+    out = c.toDataURL("image/jpeg", q);
+    if (out.length <= 450000) return out;
+    if (q > 0.62) q -= 0.1; else maxDim = Math.round(maxDim * 0.85);
+  }
+  return out;
+}
+function setPendingImage(data) {
+  pendingImg = data;
+  $("preview").src = data;
+  $("preview").classList.remove("hidden");
+  $("photoBtn").textContent = "📷 Change photo";
+}
 $("photoFile").onchange = e => {
   const f = e.target.files[0];
+  e.target.value = "";
   if (!f) return;
-  const r = new FileReader();
-  r.onload = () => {
-    const im = new Image();
-    im.onload = () => {
-      const s = Math.min(1, 640 / Math.max(im.width, im.height));
-      const w = Math.round(im.width * s), h = Math.round(im.height * s);
-      const c = document.createElement("canvas");
-      c.width = w; c.height = h;
-      c.getContext("2d").drawImage(im, 0, 0, w, h);
-      pendingImg = c.toDataURL("image/jpeg", 0.6);
-      $("preview").src = pendingImg;
-      $("preview").classList.remove("hidden");
-      $("photoBtn").textContent = "📷 Change photo";
-    };
-    im.src = r.result;
+  const url = URL.createObjectURL(f);
+  const im = new Image();
+  im.onload = () => {
+    setPendingImage(makePostImage(im, im.naturalWidth, im.naturalHeight));
+    URL.revokeObjectURL(url);
   };
-  r.readAsDataURL(f);
+  im.onerror = () => { URL.revokeObjectURL(url); say("That picture could not be opened. Try another one."); };
+  im.src = url;
 };
+
+// ---------- camera: see yourself, tap to snap, then back to your post ----------
+let camStream = null, camFacing = "user", camData = "";
+function camStop() {
+  if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+  $("camVideo").srcObject = null;
+}
+function camMode(review) {
+  $("camVideo").classList.toggle("hidden", review);
+  $("camShot").classList.toggle("hidden", !review);
+  $("camLive").classList.toggle("hidden", review);
+  $("camReview").classList.toggle("hidden", !review);
+}
+function camClose() { camStop(); $("camModal").classList.add("hidden"); }
+async function camStart() {
+  camStop();
+  camMode(false);
+  $("camMsg").textContent = "Starting camera...";
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: { facingMode: { ideal: camFacing }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+    });
+    const v = $("camVideo");
+    v.classList.toggle("front", camFacing === "user");
+    v.srcObject = camStream;
+    try { await v.play(); } catch (e) {}
+    $("camMsg").textContent = "";
+  } catch (err) {
+    camClose();
+    say("Camera is blocked. Allow camera access for this site in your browser settings, or tap Add photo.");
+  }
+}
+$("camBtn").onclick = () => {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    say("The camera can't open here. Tap Add photo instead."); return;
+  }
+  $("camModal").classList.remove("hidden");
+  camStart();
+};
+$("camSnap").onclick = () => {
+  const v = $("camVideo");
+  if (!v.videoWidth) return;
+  camData = makePostImage(v, v.videoWidth, v.videoHeight);
+  $("camShot").src = camData;
+  camStop();
+  camMode(true);
+};
+$("camRetake").onclick = () => { camData = ""; camStart(); };
+$("camUse").onclick = () => {
+  if (camData) setPendingImage(camData);
+  camData = "";
+  camClose();
+  try { $("preview").scrollIntoView({ behavior: "smooth", block: "center" }); } catch (e) {}
+};
+$("camFlip").onclick = () => { camFacing = camFacing === "user" ? "environment" : "user"; camStart(); };
+$("camClose").onclick = camClose;
+window.addEventListener("pagehide", camStop);
+document.addEventListener("visibilitychange", () => { if (document.hidden && camStream) camClose(); });
+
+
+// ---------- quick snap + Jux (ask the AI) ----------
+$("quickSnap").onclick = () => $("camBtn").click();
+
+const JUX_URL = "PASTE_YOUR_WORKER_URL_HERE";
+const JUX_DAILY = 20;
+let juxHist = [], juxBusy = false;
+const juxKey = () => "juxUsed_" + (auth.currentUser ? auth.currentUser.uid : "x") + "_" + new Date().toISOString().slice(0, 10);
+function juxUsed() { try { return +localStorage.getItem(juxKey()) || 0; } catch (e) { return 0; } }
+function juxLeftUpdate() { $("juxLeft").textContent = isOwner() ? "" : Math.max(0, JUX_DAILY - juxUsed()) + " left today"; }
+function juxAdd(cls, text) {
+  const d = document.createElement("div");
+  d.className = "jb " + cls;
+  d.textContent = text;
+  $("juxLog").appendChild(d);
+  $("juxLog").scrollTop = $("juxLog").scrollHeight;
+  return d;
+}
+$("quickJux").onclick = () => {
+  $("juxModal").classList.remove("hidden");
+  juxLeftUpdate();
+  if (!$("juxLog").children.length) juxAdd("jux", "Hi, I am Jux. Ask me anything: gaming tips, school, ideas, or how this app works.");
+};
+$("juxClose").onclick = () => $("juxModal").classList.add("hidden");
+async function juxAsk() {
+  const q = $("juxInput").value.trim();
+  if (!q || juxBusy) return;
+  if (JUX_URL.indexOf("http") !== 0) { juxAdd("jux", "Jux is not switched on yet. The Owner still needs to connect it."); return; }
+  if (!isOwner() && juxUsed() >= JUX_DAILY) { juxAdd("jux", "You used your " + JUX_DAILY + " questions for today. Come back tomorrow!"); return; }
+  $("juxInput").value = "";
+  juxAdd("me", q);
+  juxHist.push({ role: "user", content: q });
+  juxBusy = true;
+  const wait = juxAdd("jux", "Jux is thinking...");
+  try {
+    const r = await fetch(JUX_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: juxHist.slice(-8) }) });
+    const d = await r.json();
+    if (!r.ok || !d.reply) throw new Error("fail");
+    wait.textContent = d.reply;
+    juxHist.push({ role: "assistant", content: d.reply });
+    try { localStorage.setItem(juxKey(), String(juxUsed() + 1)); } catch (e) {}
+  } catch (e) {
+    wait.textContent = "Jux could not answer right now. Try again in a minute.";
+    juxHist.pop();
+  }
+  juxBusy = false;
+  juxLeftUpdate();
+  $("juxLog").scrollTop = $("juxLog").scrollHeight;
+}
+$("juxSend").onclick = juxAsk;
+$("juxInput").addEventListener("keydown", e => { if (e.key === "Enter") juxAsk(); });
+
+// show the player's best Loot Run score on the game card
+try {
+  const lb = localStorage.getItem("lootrun_best");
+  if (lb && +lb > 0) $("gcBest").textContent = "Your best: " + lb + " m. Can you beat it?";
+} catch (e) {}
+
 $("postBtn").onclick = async () => {
   const text = $("postText").value.trim();
   if (!text && !pendingImg) return;
@@ -1137,8 +1339,18 @@ $("sendBtn").onclick = async () => {
     await addMsg(chatCtx.path, text, { from: u.uid, name: myName(), owner: ownerReply });
     if (ownerReply) await updateDoc(doc(db, "appeals", chatCtx.appealUid), { last: "👑 " + text, time: serverTimestamp(), answered: true });
     $("chatInput").value = "";
+    // Owner is offline and a player is messaging him privately: the assistant bot answers.
+    if (!ownerReply && !isOwner() && ownerUid && chatCtx.path[0] === "chats" &&
+        String(chatCtx.path[1]).split("_").includes(ownerUid) && !ownerOnline()) {
+      let a = botAnswer(text);
+      if (!a && Date.now() - lastDmBot > 600000) {
+        a = "Hi! 👋 I am the assistant of Jeffrey Nwokoleme, the Owner. He is offline now and will reply when he is back. Type help to see what I can answer now.";
+      }
+      if (a) { lastDmBot = Date.now(); await addMsg(chatCtx.path, a, { from: "bot", name: "Bot" }); }
+    }
   } catch (e) { say(friendly(e)); }
 };
+let lastDmBot = 0;
 $("closeChat").onclick = () => {
   if (chatUnsub) chatUnsub();
   chatUnsub = null;
