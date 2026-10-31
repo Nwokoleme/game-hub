@@ -1,0 +1,1725 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Game Chat Hub - by Jeffrey Nwokoleme</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Game Chat Hub">
+<link rel="apple-touch-icon" href="icon-192-1.png">
+<link rel="icon" href="icon-192-1.png">
+<script>window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();window.__ip=e;});</script>
+<style>
+:root{--bg:#000;--card:#16181c;--tx:#e7e9ea;--mut:#71767b;--line:#2f3336;--ac:#1d9bf0;--inp:#202327}
+body.light{--bg:#fff;--card:#f7f9f9;--tx:#0f1419;--mut:#536471;--line:#eff3f4;--inp:#eff3f4}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--tx);margin:0;min-height:100vh}
+.bar{position:sticky;top:0;z-index:6;background:var(--bg);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:10px 14px}
+.logo{font-weight:900;font-size:18px;background:linear-gradient(90deg,#1d9bf0,#a855f7,#ec4899);-webkit-background-clip:text;background-clip:text;color:transparent}
+.right{display:flex;align-items:center;gap:8px}
+.ownerTag{font-size:11px;border:1px solid #f4b400;color:#f4b400;padding:3px 9px;border-radius:20px;font-weight:bold;box-shadow:0 0 10px rgba(244,180,0,.45)}
+#themeBtn{width:auto;margin:0;padding:6px 10px;background:var(--inp);color:var(--tx);border-radius:20px;font-size:16px}
+.wrap{max-width:560px;margin:0 auto;padding:6px 12px 90px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;margin:12px 0}
+.card h2{margin:0 0 8px;font-size:19px}
+.mut{color:var(--mut);font-size:13px}
+input,select,textarea,button{display:block;width:100%;padding:13px;margin:8px 0;font-size:16px;border-radius:12px;border:1px solid var(--line);font-family:inherit}
+input,select,textarea{background:var(--inp);color:var(--tx)}
+textarea{resize:none;height:80px}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--ac)}
+button{background:linear-gradient(90deg,#1d9bf0,#6366f1);color:#fff;font-weight:bold;border:none;border-radius:24px}
+button.green{background:linear-gradient(90deg,#00ba7c,#06b6d4)}
+button.ghost{background:transparent;color:var(--tx);border:1px solid var(--line)}
+button.red{background:#f4212e}
+button:active{transform:scale(.96)}
+.sm{width:auto;display:inline-block;padding:8px 16px;margin:8px 8px 0 0;font-size:14px}
+.catbar{display:flex;gap:6px;overflow-x:auto;padding:4px 0 2px}
+.catbtn{flex:none;width:auto;margin:4px 0;padding:8px 14px;font-size:13px;background:var(--inp);color:var(--tx);border:1px solid var(--line);border-radius:20px}
+.catbtn.on{background:linear-gradient(90deg,#1d9bf0,#6366f1);color:#fff;border-color:transparent}
+.hero{text-align:center;padding:26px 8px 6px}
+.hero h1{margin:0;font-size:38px;line-height:1.1;background:linear-gradient(90deg,#1d9bf0,#a855f7,#ec4899);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{color:var(--mut)}
+.chips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+.chip{border:1px solid var(--line);padding:6px 12px;border-radius:20px;font-size:13px}
+.rule{display:flex;gap:10px;align-items:flex-start;font-size:14px;margin:10px 0}
+.rule input{width:22px;height:22px;margin:0;flex:none}
+.row{display:flex;gap:12px;align-items:center}
+.av{position:relative;flex:none;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#1d9bf0,#a855f7);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:19px}
+.av.big{width:76px;height:76px;font-size:32px}
+.av.own{background:linear-gradient(135deg,#f4b400,#ff7a00);box-shadow:0 0 14px rgba(244,180,0,.6)}
+.dot{position:absolute;right:0;bottom:0;width:13px;height:13px;border-radius:50%;background:#00ba7c;border:2px solid var(--bg)}
+.info{flex:1;min-width:0}
+.info b{display:block;word-wrap:break-word}
+.link{cursor:pointer}
+.badge{display:inline-block;background:#f4b400;color:#000;font-size:10px;padding:2px 7px;border-radius:10px;margin-left:6px;font-weight:bold}
+.strip{display:flex;gap:12px;overflow-x:auto;padding:6px 2px 10px}
+.strip .it{flex:none;text-align:center;font-size:11px;color:var(--mut);width:56px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.post{border-bottom:1px solid var(--line);padding:14px 2px}
+.post p{margin:10px 0;font-size:16px;white-space:pre-wrap;word-wrap:break-word}
+.post img,#preview{width:100%;max-height:420px;object-fit:cover;border-radius:16px;border:1px solid var(--line);margin-top:6px}
+.cmts{margin-top:10px;background:var(--inp);border-radius:14px;padding:8px 10px}
+.cmt{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:14px;word-wrap:break-word}
+.cmt div{min-width:0}
+.cx{cursor:pointer;flex:none}
+.status{color:#f4b400;font-size:13px;margin-top:6px}
+.uidline{background:var(--inp);border-radius:12px;padding:10px;margin:10px 0;font-size:15px}
+#msg{color:#f4212e;text-align:center;min-height:18px;font-size:14px;margin:6px 0;font-weight:bold}
+.log{background:var(--inp);height:300px;overflow:auto;padding:10px;border-radius:14px}
+.me{background:#1d9bf0;color:#fff;padding:8px 12px;border-radius:18px 18px 2px 18px;margin:6px 0 6px auto;width:fit-content;max-width:80%;word-wrap:break-word}
+.fr{background:var(--card);border:1px solid var(--line);padding:8px 12px;border-radius:18px 18px 18px 2px;margin:6px auto 6px 0;width:fit-content;max-width:80%;word-wrap:break-word}
+.bot{background:linear-gradient(135deg,#6366f1,#a855f7);color:#fff;padding:8px 12px;border-radius:18px 18px 18px 2px;margin:6px auto 6px 0;width:fit-content;max-width:85%;word-wrap:break-word}
+.who{font-size:11px;opacity:.8;margin-bottom:2px;font-weight:bold}
+.ownerCard{text-align:center;border:2px solid #f4b400;box-shadow:0 0 20px rgba(244,180,0,.3)}
+.crown{font-size:44px}
+.ownerCard h3{margin:4px 0;font-size:22px;color:#f4b400}
+.stat{display:flex;gap:10px}
+.stat div{flex:1;text-align:center;background:var(--inp);border-radius:12px;padding:12px;font-size:13px}
+.stat b{display:block;font-size:26px;color:var(--ac)}
+ul{padding-left:20px;line-height:1.8;margin:0;font-size:15px}
+details summary{cursor:pointer;font-weight:bold;padding:4px 0}
+nav{position:fixed;bottom:0;left:0;right:0;z-index:6;display:flex;background:var(--bg);border-top:1px solid var(--line);padding:4px 2px calc(4px + env(safe-area-inset-bottom))}
+nav button{flex:1;width:auto;margin:0;padding:6px 0;background:none;color:var(--mut);font-size:11px;border-radius:10px;border:none}
+nav button span{display:block;font-size:22px}
+nav button.on{color:var(--ac)}
+footer{text-align:center;color:var(--mut);font-size:12px;padding:16px 0}
+footer b{color:#f4b400}
+.hidden{display:none}
+.rulesGrid{display:flex;flex-direction:column;gap:10px}
+.rbox{border-radius:14px;padding:12px 14px;border:1px solid var(--line);background:var(--inp)}
+.rbox h3{margin:0 0 6px;font-size:16px}
+.rbox.good{border-color:#00ba7c}
+.rbox.good h3{color:#00ba7c}
+.rbox.bad{border-color:#f4212e}
+.rbox.bad h3{color:#f4212e}
+.rbox ul{line-height:1.7;font-size:14px}
+#rulesModal{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.8);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:16px 12px}
+#rulesModal.hidden{display:none}
+.picker{display:flex;flex-wrap:wrap;gap:2px;max-height:190px;overflow-y:auto;background:var(--inp);border-radius:14px;padding:8px;margin-top:6px}
+.picker.hidden{display:none}
+.picker .em{font-size:26px;padding:4px 6px;cursor:pointer}
+.picker .stp{width:31%;text-align:center;padding:6px 2px;cursor:pointer;border-radius:12px}
+.picker .stp:active{background:var(--line)}
+.stk{font-size:54px;line-height:1.15;text-align:center}
+.stkl{font-size:12px;font-weight:bold;text-align:center}
+.sticker{background:none!important;border:none!important;color:var(--tx)!important}
+.tm{font-size:10px;opacity:.65;margin-top:3px;text-align:right}
+#rulesModal .card{max-width:520px;width:100%;margin:auto}
+/* ===== VERSION 2: standard look (dark: black, light: white + green) ===== */
+:root{--bg:#000;--card:#0f1210;--tx:#f2f5f3;--mut:#8a948e;--line:#232925;--ac:#4ade80;--btn:#15803d;--inp:#171c19;--me-bg:#0f6b3c;--me-tx:#fff;--in-bg:#1c211e;--chat-bg:#0a0d0b}
+body.light{--bg:#fff;--card:#f5f8f6;--tx:#0b0f0d;--mut:#55605a;--line:#e1e8e3;--ac:#15803d;--btn:#15803d;--inp:#edf2ee;--me-bg:#d3f3da;--me-tx:#0b0f0d;--in-bg:#fff;--chat-bg:#e8efe9}
+body.light{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cg font-size='26' opacity='.09'%3E%3Ctext x='14' y='40'%3E🎮%3C/text%3E%3Ctext x='120' y='90'%3E🔥%3C/text%3E%3Ctext x='40' y='150'%3E🏆%3C/text%3E%3Ctext x='150' y='195'%3E⚽%3C/text%3E%3Ctext x='170' y='30'%3E🎧%3C/text%3E%3C/g%3E%3C/svg%3E")}
+body{font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+
+/* buttons and colours: green instead of blue/purple */
+button{background:var(--btn)}
+button.green{background:var(--btn)}
+.logo{background:none;-webkit-background-clip:border-box;background-clip:border-box;color:var(--tx);font-size:19px;letter-spacing:-.3px}
+.hero h1{background:none;-webkit-background-clip:border-box;background-clip:border-box;color:var(--tx)}
+.av{background:linear-gradient(135deg,#16a34a,#0f766e)}
+.catbtn.on{background:none;color:var(--tx);border-bottom-color:var(--ac)}
+#themeBtn{width:38px;height:38px;padding:0;border-radius:50%;font-size:17px}
+.bar{backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);background:color-mix(in srgb,var(--bg) 85%,transparent)}
+.ownerTag{font-size:10px;padding:3px 8px}
+
+/* bottom navigation with line icons */
+nav{backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);background:color-mix(in srgb,var(--bg) 90%,transparent)}
+nav button span{display:block;height:26px;font-size:0}
+nav button svg{width:25px;height:25px;display:block;margin:0 auto 2px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+nav button.on svg{stroke-width:2.7}
+
+/* stories row: players online */
+.strip{gap:14px;padding:8px 6px 10px}
+.strip .it{width:64px;overflow:visible;color:var(--tx)}
+.strip .it div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.strip .it .av{width:56px;height:56px;border:3px solid var(--bg);box-shadow:0 0 0 2.5px var(--ac)}
+.dot{animation:pulse 2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.6)}70%{box-shadow:0 0 0 7px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
+@media (prefers-reduced-motion:reduce){.dot{animation:none}}
+#tab-home>.card:first-child{background:none;border:none;border-bottom:1px solid var(--line);border-radius:0;padding:6px 0 4px;margin:0}
+
+/* compose box like X */
+#tab-home>.card:nth-child(2){background:none;border:none;border-bottom:1px solid var(--line);border-radius:0;padding:12px 0;margin:0}
+#postText{background:transparent;border:none;font-size:19px;height:84px;padding:8px 2px}
+#postText:focus{outline:none}
+#postCat{width:auto;display:inline-block;background:transparent;border:1px solid var(--line);border-radius:20px;padding:6px 12px;font-size:14px;color:var(--ac)}
+#photoBtn{width:auto;display:inline-block;padding:9px 16px;font-size:14px;margin-right:8px}
+#postBtn{width:auto;display:inline-block;padding:9px 28px;font-size:15px}
+
+/* category tabs like X */
+.catbar{gap:0;padding:0;border-bottom:1px solid var(--line)}
+.catbtn{background:none;border:none;border-bottom:3px solid transparent;border-radius:0;color:var(--mut);padding:12px 16px;margin:0;font-size:15px;font-weight:bold}
+
+/* posts like Instagram: full-width photo, icon row */
+.post{padding:14px 0 6px}
+.post .row{padding:0 2px}
+.info b{font-size:15px}
+.post p{font-size:16px;line-height:1.45;margin:10px 2px}
+.post img{width:calc(100% + 24px);max-width:none;margin:8px -12px 0;border-radius:0;border:none;max-height:560px}
+.post .sm.ghost{background:transparent;border:none;color:var(--tx);padding:8px 10px 8px 2px;margin:6px 6px 0 0;font-size:16px}
+.post .sm.ghost:active{transform:scale(1.3)}
+
+/* chat bubbles (WhatsApp style) */
+.log{padding:12px 10px}
+.me,.fr,.bot{padding:7px 11px 5px;max-width:82%;box-shadow:0 1px 1px rgba(0,0,0,.25);font-size:15.5px;line-height:1.35}
+.me{background:var(--me-bg);color:var(--me-tx);border-radius:12px 12px 3px 12px}
+.fr{background:var(--in-bg);color:var(--tx);border:none;border-radius:12px 12px 12px 3px}
+.bot{background:var(--in-bg);color:var(--tx);border-radius:12px 12px 12px 3px;border-left:3px solid var(--ac)}
+.who{color:var(--ac);opacity:1}
+.sticker{box-shadow:none!important}
+#roomLog{height:min(52vh,420px);background:var(--wp-bg,var(--chat-bg));border-radius:14px}
+#chatLog .sticker .stkl,#roomLog .sticker .stkl{color:#fff;text-shadow:0 1px 4px #000}
+
+/* message bar: emoji, sticker, text box, round send button */
+.composer{display:grid;grid-template-columns:auto 1fr auto;grid-template-areas:"p p p" "e i s";gap:0 8px;align-items:center;padding:8px 10px calc(8px + env(safe-area-inset-bottom));background:var(--bg);border-top:1px solid var(--line)}
+.composer>.picker{grid-area:p;margin:0 0 8px}
+.composer>.row{grid-area:e;gap:0}
+.composer>input{grid-area:i;margin:0;border-radius:22px;padding:11px 16px;min-width:0}
+.composer>button{grid-area:s;width:46px;height:46px;padding:0;margin:0;border-radius:50%;font-size:19px;display:flex;align-items:center;justify-content:center}
+.composer .row button{width:38px;height:38px;padding:0;margin:0;font-size:22px;background:transparent;border:none;color:var(--tx)}
+.card .composer{padding:10px 0 0;background:transparent;border-top:none}
+
+/* private chat = full screen like WhatsApp */
+#tab-chat:not(.hidden){position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;background:var(--bg);height:100dvh}
+.chatHead{display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid var(--line);background:var(--bg)}
+.chatHead button{width:40px;height:40px;padding:0;margin:0;border-radius:50%;flex:none;font-size:18px}
+.chatHead h2{flex:1;margin:0;font-size:17px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#chatLog{flex:1;min-height:0;height:auto;border-radius:0;background:var(--wp-bg,var(--chat-bg))}
+
+/* wallpaper picker */
+#wpModal{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.8);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:16px 12px}
+#wpModal.hidden{display:none}
+#wpModal .card{max-width:520px;width:100%;margin:auto}
+.wpGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}
+.wpTile{position:relative;height:150px;border-radius:14px;border:3px solid transparent;overflow:hidden;cursor:pointer;background-size:cover}
+.wpTile.on{border-color:var(--ac)}
+.wpTile.on::after{content:"✓";position:absolute;top:6px;right:8px;width:24px;height:24px;border-radius:50%;background:var(--btn);color:#fff;font-weight:bold;text-align:center;line-height:24px}
+.wpName{position:absolute;left:0;right:0;bottom:0;padding:18px 8px 7px;font-size:13px;font-weight:bold;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.75))}
+
+/* community room: small card until opened, then full screen */
+#roomChat:not(.full) .chatHead,#roomChat:not(.full) #roomLog,#roomChat:not(.full) .composer{display:none}
+#roomChat.full{position:fixed;inset:0;z-index:30;margin:0;padding:0;border:none;border-radius:0;display:flex;flex-direction:column;height:100dvh;background:var(--bg)}
+#roomChat.full #roomIntro{display:none}
+#roomChat.full #roomLog{flex:1;height:auto;min-height:0;border-radius:0;margin:0}
+#roomChat.full .composer{padding:8px 10px calc(8px + env(safe-area-inset-bottom));background:var(--bg);border-top:1px solid var(--line)}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <div class="logo">🎮 Game Chat Hub</div>
+  <div class="right">
+    <div class="ownerTag">👑 Jeffrey Nwokoleme</div>
+    <button id="themeBtn">🌓</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <p id="msg"></p>
+
+  <div id="authBox">
+    <div class="hero">
+      <h1>Play. Connect.<br>Dominate.</h1>
+      <p>Games, lifestyle and fun. Find Call of Duty and Free Fire players, post, chat, and play together.</p>
+      <div class="chips">
+        <div class="chip">🔫 Call of Duty</div>
+        <div class="chip">🔥 Free Fire</div>
+        <div class="chip">🌍 Lifestyle</div>
+        <div class="chip">💬 Private Chat</div>
+        <div class="chip">🏟️ Community Room</div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>🏟️ Welcome to the community</h2>
+      <div class="mut" style="margin-bottom:10px">Read these before you join.</div>
+      <div class="rulesGrid">
+        <div class="rbox good">
+          <h3>✅ What we like</h3>
+          <ul>
+            <li>Respect and good vibes</li>
+            <li>Sharing gaming tips, clips and wins</li>
+            <li>Helping new players</li>
+            <li>Fun, jokes and friendly banter</li>
+          </ul>
+        </div>
+        <div class="rbox bad">
+          <h3>🚫 What we do not allow</h3>
+          <ul>
+            <li>Scams, fake giveaways or fake UIDs. Please do not scam.</li>
+            <li>Sending nude or sexual pictures or messages</li>
+            <li>Insults, threats, bullying or bad behavior</li>
+            <li>Hacking or cheating offers</li>
+            <li>Spam, or asking for people's passwords</li>
+          </ul>
+        </div>
+      </div>
+      <div class="mut" style="margin-top:10px">Breaking these rules can get you restricted by the Owner.</div>
+    </div>
+    <div class="card">
+      <h2>Join the community</h2>
+      <input id="email" type="email" placeholder="Email">
+      <input id="password" type="password" placeholder="Password (6+ characters)">
+      <div class="rule">
+        <input type="checkbox" id="agree">
+        <div>I agree to the rules: respect everyone, no insults or threats, no nudity or inappropriate pictures, no scams or fake UIDs. Rule breakers will be restricted by the Owner.</div>
+      </div>
+      <button id="signupBtn" class="green">Create account</button>
+      <button id="loginBtn" class="ghost">Log in</button>
+      <button id="forgotBtn" class="ghost">Forgot password?</button>
+    </div>
+  </div>
+
+  <div id="bannedBox" class="hidden">
+    <div class="card" style="text-align:center">
+      <div style="font-size:50px">🚫</div>
+      <h2>Account restricted</h2>
+      <p id="banText" class="mut"></p>
+    </div>
+    <div class="card">
+      <h2>📨 Appeal to the Owner</h2>
+      <div class="mut">Write to Jeffrey Nwokoleme. Be respectful.</div>
+      <div id="appealLog" class="log" style="height:240px"></div>
+      <input id="appealInput" placeholder="Type your message to the Owner" maxlength="800">
+      <button id="appealSend">Send to Owner</button>
+      <button id="bannedOut" class="ghost">Log out</button>
+    </div>
+  </div>
+
+  <div id="app" class="hidden">
+
+    <div id="tab-home">
+      <div class="card">
+        <div class="mut" style="margin-bottom:6px">🟢 Players online</div>
+        <div id="strip" class="strip"></div>
+      </div>
+      <div class="card">
+        <div class="row">
+          <div class="av" id="meAv">?</div>
+          <div class="info"><b id="meName">Welcome</b><span class="mut">Share your wins, your day, your life.</span></div>
+        </div>
+        <select id="postCat">
+          <option value="gaming">🎮 Gaming</option>
+          <option value="lifestyle">🌍 Lifestyle</option>
+          <option value="fun">😂 Fun</option>
+        </select>
+        <textarea id="postText" maxlength="300" placeholder="I just defeated a squad! 🔥"></textarea>
+        <img id="preview" class="hidden">
+        <input id="photoFile" type="file" accept="image/*" class="hidden">
+        <button id="photoBtn" class="ghost">📷 Add photo</button>
+        <button id="postBtn">Post</button>
+      </div>
+      <div id="catBar" class="catbar"></div>
+      <div id="feed"></div>
+    </div>
+
+    <div id="tab-players" class="hidden">
+      <div class="card">
+        <h2>👥 Players</h2>
+        <div class="mut">Tap a name to see his page, then send a request.</div>
+        <input id="playerSearch" type="search" placeholder="🔍 Search a player by name or UID" maxlength="40" autocomplete="off">
+        <div id="players"></div>
+      </div>
+    </div>
+
+    <div id="tab-user" class="hidden">
+      <button class="ghost sm" id="backUser">← Back</button>
+      <div id="userBox"></div>
+    </div>
+
+    <div id="tab-friends" class="hidden">
+      <div class="card"><h2>📩 Requests</h2><div id="incoming"></div></div>
+      <div class="card"><h2>💬 My Friends</h2><div id="friends"></div></div>
+    </div>
+
+    <div id="tab-chat" class="hidden">
+      <div class="chatHead">
+        <button class="ghost" id="closeChat" aria-label="Back">←</button>
+        <h2 id="chatTitle"></h2>
+        <button class="ghost" id="wpBtnChat" aria-label="Wallpaper">🎨</button>
+      </div>
+      <div id="chatLog" class="log"></div>
+      <div class="composer">
+        <input id="chatInput" placeholder="Type a message" maxlength="500">
+        <button id="sendBtn" aria-label="Send">➤</button>
+      </div>
+    </div>
+
+    <div id="tab-room" class="hidden">
+      <div class="card ownerCard">
+        <div class="crown">👑</div>
+        <div class="mut">OWNER OF THE COMMUNITY</div>
+        <h3>Jeffrey Nwokoleme</h3>
+        <div>Owner and Founder of Game Chat Hub · 🇳🇬 Nigeria</div>
+        <div id="ownerState" class="status"></div>
+      </div>
+      <div class="card">
+        <div class="stat">
+          <div><b id="count">0</b>Players</div>
+          <div><b id="onlineCount">0</b>Online now</div>
+        </div>
+        <details style="margin-top:10px">
+          <summary>📜 Community Rules</summary>
+          <div style="margin-top:8px"><div class="rulesGrid">
+        <div class="rbox good">
+          <h3>✅ What we like</h3>
+          <ul>
+            <li>Respect and good vibes</li>
+            <li>Sharing gaming tips, clips and wins</li>
+            <li>Helping new players</li>
+            <li>Fun, jokes and friendly banter</li>
+          </ul>
+        </div>
+        <div class="rbox bad">
+          <h3>🚫 What we do not allow</h3>
+          <ul>
+            <li>Scams, fake giveaways or fake UIDs. Please do not scam.</li>
+            <li>Sending nude or sexual pictures or messages</li>
+            <li>Insults, threats, bullying or bad behavior</li>
+            <li>Hacking or cheating offers</li>
+            <li>Spam, or asking for people's passwords</li>
+          </ul>
+        </div>
+      </div>
+          <ul style="margin-top:10px">
+            <li>See a bad post? Tap 🚩 under it to report it.</li>
+            <li>Breaking rules = restriction by the Owner (usually 30 days).</li>
+          </ul></div>
+        </details>
+      </div>
+      <div class="card" id="roomChat">
+        <div id="roomIntro">
+          <h2>🏟️ Community Room</h2>
+          <div class="mut">Everyone can talk here. The Owner and his bot 🤖 will reply. Ask the bot for "help".</div>
+          <button id="roomOpen" style="margin-top:10px">💬 Open community chat</button>
+        </div>
+        <div class="chatHead">
+          <button class="ghost" id="roomBack" aria-label="Back">←</button>
+          <h2>🏟️ Community Room</h2>
+          <button class="ghost" id="wpBtnRoom" aria-label="Wallpaper">🎨</button>
+        </div>
+        <div id="roomLog" class="log"></div>
+        <div class="composer">
+          <input id="roomInput" placeholder="Say something to the community" maxlength="500">
+          <button id="roomSend" aria-label="Send">➤</button>
+        </div>
+      </div>
+      <div id="adminBox" class="card hidden" style="border:2px solid #f4212e">
+        <h2>👑 Owner Inbox</h2>
+        <div class="mut">Appeals from restricted players:</div>
+        <div id="appealList"></div>
+        <h2 style="margin-top:16px">🚩 Reports<span id="repCount"></span></h2>
+        <div id="reportList"></div>
+        <h2 style="margin-top:16px">🚫 Manage players</h2>
+        <div id="adminList"></div>
+      </div>
+    </div>
+
+    <div id="tab-me" class="hidden">
+      <div class="card">
+        <h2>⚙️ My Profile</h2>
+        <p id="who" class="mut"></p>
+        <div class="row" style="margin-bottom:6px">
+          <div class="av big" id="meAv2">?</div>
+          <div class="info">
+            <input id="profFile" type="file" accept="image/*" class="hidden">
+            <button id="profBtn" class="ghost">🖼 Change profile picture</button>
+          </div>
+        </div>
+        <input id="gameName" placeholder="Your game name" maxlength="30">
+        <select id="game">
+          <option>Free Fire</option>
+          <option>Call of Duty</option>
+        </select>
+        <input id="uid" placeholder="Your game UID" maxlength="30">
+        <button id="saveBtn" class="green">Save my profile</button>
+        <button id="seeMe" class="ghost">👁 See my public page</button>
+        <button id="installBtn" class="ghost hidden">📲 Install app on my phone</button>
+        <div id="iosHint" class="mut hidden">iPhone: open this page in Safari, tap the Share button, then tap "Add to Home Screen".</div>
+        <button id="logoutBtn" class="ghost">Log out</button>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>© Game Chat Hub · Owned and created by <b>Jeffrey Nwokoleme</b> · v2</footer>
+</div>
+
+<div id="rulesModal" class="hidden">
+  <div class="card">
+    <h2>🏟️ Welcome to Game Chat Hub</h2>
+    <div class="mut" style="margin-bottom:10px">Our community rules. Please read them.</div>
+    <div class="rulesGrid">
+        <div class="rbox good">
+          <h3>✅ What we like</h3>
+          <ul>
+            <li>Respect and good vibes</li>
+            <li>Sharing gaming tips, clips and wins</li>
+            <li>Helping new players</li>
+            <li>Fun, jokes and friendly banter</li>
+          </ul>
+        </div>
+        <div class="rbox bad">
+          <h3>🚫 What we do not allow</h3>
+          <ul>
+            <li>Scams, fake giveaways or fake UIDs. Please do not scam.</li>
+            <li>Sending nude or sexual pictures or messages</li>
+            <li>Insults, threats, bullying or bad behavior</li>
+            <li>Hacking or cheating offers</li>
+            <li>Spam, or asking for people's passwords</li>
+          </ul>
+        </div>
+      </div>
+    <div class="mut" style="margin-top:10px">Breaking these rules can get you restricted by the Owner.</div>
+    <button id="rulesOk" class="green">I understand, let me in</button>
+  </div>
+</div>
+
+<div id="wpModal" class="hidden">
+  <div class="card">
+    <h2>🎨 Chat wallpaper</h2>
+    <div class="mut">Pick a background for your chats. It is saved on this phone.</div>
+    <div id="wpGrid" class="wpGrid"></div>
+    <input id="wpFile" type="file" accept="image/*" class="hidden">
+    <button id="wpOwn" class="ghost">📷 Use my own picture</button>
+    <div id="wpNote" class="status"></div>
+    <button id="wpClose" class="green">Done</button>
+  </div>
+</div>
+
+<nav id="nav" class="hidden">
+  <button data-tab="home" class="on"><span><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg></span>Home</button>
+  <button data-tab="players"><span><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14c2.7 0 4.5 1.8 4.5 4.5"/></svg></span>Players</button>
+  <button data-tab="room"><span><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg></span>Room</button>
+  <button data-tab="friends"><span><svg viewBox="0 0 24 24"><path d="M21 3L3 10.5l7 3 3 7z"/><path d="M10 13.5L21 3"/></svg></span><em id="friendsLbl" style="font-style:normal">Friends</em></button>
+  <button data-tab="me"><span><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg></span>Me</button>
+</nav>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, updateDoc, addDoc, deleteDoc, collection, query, where, orderBy, limit, onSnapshot, serverTimestamp, arrayUnion, arrayRemove, increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCTNxprto8tS76qr9opP1CCPaDD8dNZNRI",
+  authDomain: "game-chat-hub.firebaseapp.com",
+  projectId: "game-chat-hub",
+  storageBucket: "game-chat-hub.firebasestorage.app",
+  messagingSenderId: "87164754087",
+  appId: "1:87164754087:web:2fa11234447e6129b06382"
+};
+
+const OWNER_EMAIL = "saviatim3@gmail.com";
+const DAY = 86400000;
+const CATS = { gaming: "🎮 Gaming", lifestyle: "🌍 Lifestyle", fun: "😂 Fun" };
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const $ = id => document.getElementById(id);
+const say = t => { $("msg").style.color = ""; $("msg").textContent = t; if (t) window.scrollTo({ top: 0, behavior: "smooth" }); };
+const good = t => { say(t); $("msg").style.color = "#00ba7c"; };
+
+function friendly(e) {
+  const c = (e && e.code) || "";
+  const m = {
+    "auth/invalid-credential": "Wrong email or password.",
+    "auth/wrong-password": "Wrong email or password.",
+    "auth/user-not-found": "No account with that email. Tap Create account.",
+    "auth/email-already-in-use": "That email already has an account. Tap Log in.",
+    "auth/weak-password": "Password must be 6 or more characters.",
+    "auth/invalid-email": "That email does not look right.",
+    "auth/missing-email": "Type your email first.",
+    "auth/missing-password": "Type your password.",
+    "auth/too-many-requests": "Too many tries. Wait a few minutes and try again.",
+    "auth/network-request-failed": "No internet. Check your network.",
+    "permission-denied": "You are not allowed to do that."
+  };
+  return m[c] || (e && e.message) || "Something went wrong. Try again.";
+}
+
+let players = [], reqs = {}, posts = [], bans = {}, appeals = [], reports = [];
+let unsubs = [], chatUnsub = null, roomUnsub = null, appealUnsub = null;
+let chatCtx = null, ownerUid = null, ownerSeen = 0, myProfile = null, viewUid = null, pendingImg = "";
+let presenceTimer = null, mainStarted = false, lastAppealFrom = "", myBan = null, session = 0;
+let feedCat = "all", cmtData = {}, cmtUnsubs = {}, openCmts = new Set(), drafts = {};
+
+const isOwner = () => auth.currentUser && auth.currentUser.email && auth.currentUser.email.toLowerCase() === OWNER_EMAIL;
+const isOnline = p => p && p.lastSeen && (Date.now() - p.lastSeen) < 150000;
+const ownerOnline = () => (Date.now() - ownerSeen) < 180000;
+const restricted = b => b && (b.until === 0 || b.until > Date.now());
+const followingOf = p => (p && p.following) || [];
+const followersOf = uid => players.filter(x => followingOf(x).includes(uid)).length;
+const likesOf = uid => posts.filter(x => x.uid === uid).reduce((n, x) => n + (x.likes || []).length + (x.fires || []).length, 0);
+const amFollowing = uid => followingOf(myProfile).includes(uid);
+let autoFollowDone = false;
+async function ensureFollowOwner() {
+  const me = auth.currentUser;
+  if (autoFollowDone || !me || !myProfile || !ownerUid || me.uid === ownerUid) return;
+  autoFollowDone = true;
+  if (followingOf(myProfile).includes(ownerUid)) return;
+  try { await updateDoc(doc(db, "players", me.uid), { following: arrayUnion(ownerUid) }); } catch (e) {}
+}
+async function toggleFollow(uid) {
+  const me = auth.currentUser;
+  if (!me) return;
+  if (!myProfile) { say("Save your game name and UID first, then you can follow players."); return; }
+  const on = amFollowing(uid);
+  if (on && uid === ownerUid) { say("Everyone follows the Owner 👑"); return; }
+  try {
+    await updateDoc(doc(db, "players", me.uid), { following: on ? arrayRemove(uid) : arrayUnion(uid) });
+    say("");
+  } catch (e) { say(friendly(e)); }
+}
+
+// ---------- theme ----------
+try { if (localStorage.getItem("theme") === "light") document.body.classList.add("light"); } catch (e) {}
+$("themeBtn").onclick = () => {
+  document.body.classList.toggle("light");
+  try { localStorage.setItem("theme", document.body.classList.contains("light") ? "light" : "dark"); } catch (e) {}
+};
+
+// ---------- install as app ----------
+if ("serviceWorker" in navigator) { navigator.serviceWorker.register("sw.js").catch(() => {}); }
+const standalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || navigator.standalone;
+function checkInstall() {
+  if (standalone) return;
+  if (window.__ip) $("installBtn").classList.remove("hidden");
+}
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); window.__ip = e; checkInstall(); });
+checkInstall();
+if (/iphone|ipad|ipod/i.test(navigator.userAgent) && !standalone) $("iosHint").classList.remove("hidden");
+$("installBtn").onclick = async () => {
+  if (!window.__ip) return;
+  window.__ip.prompt();
+  try { await window.__ip.userChoice; } catch (e) {}
+  window.__ip = null;
+  $("installBtn").classList.add("hidden");
+};
+
+// ---------- tabs ----------
+const VIEWS = ["home","players","user","friends","chat","room","me"];
+function showTab(name) {
+  VIEWS.forEach(t => $("tab-" + t).classList.toggle("hidden", t !== name));
+  const navName = name === "chat" ? "friends" : name === "user" ? "players" : name;
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.tab === navName));
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll("nav button").forEach(b => { b.onclick = () => showTab(b.dataset.tab); });
+$("backUser").onclick = () => showTab("players");
+$("seeMe").onclick = () => { if (auth.currentUser) showUser(auth.currentUser.uid); };
+
+// ---------- helpers ----------
+function mk(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+function btn(text, cls, fn) {
+  const b = mk("button", "sm " + cls, text);
+  b.onclick = e => { if (e && e.stopPropagation) e.stopPropagation(); fn(e); };
+  return b;
+}
+function setAv(el, name, photo) {
+  if (photo) {
+    el.textContent = "";
+    el.style.backgroundImage = "url(" + photo + ")";
+    el.style.backgroundSize = "cover";
+    el.style.backgroundPosition = "center";
+  } else {
+    el.style.backgroundImage = "";
+    el.textContent = (name || "?").charAt(0).toUpperCase();
+  }
+}
+function avatar(name, uid, big) {
+  const a = mk("div", "av" + (big ? " big" : "") + (uid && uid === ownerUid ? " own" : ""), (name || "?").charAt(0).toUpperCase());
+  const p = players.find(x => x.uid === uid);
+  if (p && p.photo) setAv(a, name, p.photo);
+  if (isOnline(p) || (uid && uid === ownerUid && ownerOnline())) a.appendChild(mk("span", "dot"));
+  return a;
+}
+function nameLine(name, uid) {
+  const b = mk("b", "", name || "Player");
+  if (uid && uid === ownerUid) b.appendChild(mk("span", "badge", "👑 OWNER"));
+  return b;
+}
+function status(t) { return mk("div", "status", t); }
+function timeText(t) {
+  try { return t ? t.toDate().toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "just now"; }
+  catch (e) { return ""; }
+}
+function dateText(ms) { return new Date(ms).toLocaleDateString([], { dateStyle: "medium" }); }
+function myName() { return myProfile ? myProfile.gameName : (isOwner() ? "Jeffrey Nwokoleme" : "Player"); }
+
+// ---------- auth ----------
+$("signupBtn").onclick = async () => {
+  if (!$("agree").checked) { say("Please tick the box to accept the rules."); return; }
+  try { await createUserWithEmailAndPassword(auth, $("email").value.trim(), $("password").value); }
+  catch (e) { say(friendly(e)); }
+};
+$("loginBtn").onclick = async () => {
+  try { await signInWithEmailAndPassword(auth, $("email").value.trim(), $("password").value); }
+  catch (e) { say(friendly(e)); }
+};
+$("forgotBtn").onclick = async () => {
+  const em = $("email").value.trim();
+  if (!em) { say("Type your email first, then tap Forgot password."); return; }
+  try { await sendPasswordResetEmail(auth, em); good("✅ Reset link sent. Check your email and your spam folder."); }
+  catch (e) { say(friendly(e)); }
+};
+$("logoutBtn").onclick = () => signOut(auth);
+$("bannedOut").onclick = () => signOut(auth);
+
+// ---------- profile ----------
+$("saveBtn").onclick = async () => {
+  const user = auth.currentUser;
+  if (!user) return;
+  const gn = $("gameName").value.trim();
+  const gu = $("uid").value.trim();
+  if (!gn || !gu) { say("Fill your game name and UID"); return; }
+  if (!isOwner() && /owner|jeffrey|admin|nwokoleme/i.test(gn)) { say("That name is reserved. Choose another name."); return; }
+  try {
+    const data = {
+      uid: user.uid,
+      gameName: gn,
+      game: $("game").value,
+      gameUid: gu,
+      lastSeen: Date.now()
+    };
+    if (ownerUid && ownerUid !== user.uid) data.following = arrayUnion(ownerUid);
+    await setDoc(doc(db, "players", user.uid), data, { merge: true });
+    say("");
+    showTab("home");
+  } catch (e) { say(friendly(e)); }
+};
+
+$("playerSearch").oninput = () => renderPlayers();
+
+// ---------- profile picture ----------
+$("profBtn").onclick = () => $("profFile").click();
+$("profFile").onchange = e => {
+  const f = e.target.files[0];
+  e.target.value = "";
+  if (!f) return;
+  const user = auth.currentUser;
+  if (!user) return;
+  if (!myProfile) { say("Save your game name and UID first, then add your picture."); return; }
+  const r = new FileReader();
+  r.onload = () => {
+    const im = new Image();
+    im.onload = async () => {
+      const size = 220;
+      const c = document.createElement("canvas");
+      c.width = size; c.height = size;
+      const m = Math.min(im.width, im.height);
+      const sx = (im.width - m) / 2, sy = (im.height - m) / 2;
+      c.getContext("2d").drawImage(im, sx, sy, m, m, 0, 0, size, size);
+      const data = c.toDataURL("image/jpeg", 0.75);
+      try {
+        await updateDoc(doc(db, "players", user.uid), { photo: data });
+        say("");
+        $("profBtn").textContent = "🖼 Change profile picture";
+      } catch (err) { say(friendly(err)); }
+    };
+    im.src = r.result;
+  };
+  r.readAsDataURL(f);
+};
+
+// ---------- posts ----------
+$("photoBtn").onclick = () => $("photoFile").click();
+$("photoFile").onchange = e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    const im = new Image();
+    im.onload = () => {
+      const s = Math.min(1, 640 / Math.max(im.width, im.height));
+      const w = Math.round(im.width * s), h = Math.round(im.height * s);
+      const c = document.createElement("canvas");
+      c.width = w; c.height = h;
+      c.getContext("2d").drawImage(im, 0, 0, w, h);
+      pendingImg = c.toDataURL("image/jpeg", 0.6);
+      $("preview").src = pendingImg;
+      $("preview").classList.remove("hidden");
+      $("photoBtn").textContent = "📷 Change photo";
+    };
+    im.src = r.result;
+  };
+  r.readAsDataURL(f);
+};
+$("postBtn").onclick = async () => {
+  const text = $("postText").value.trim();
+  if (!text && !pendingImg) return;
+  if (!myProfile) { say("Save your profile first."); showTab("me"); return; }
+  try {
+    await addDoc(collection(db, "posts"), {
+      uid: auth.currentUser.uid, name: myProfile.gameName, text: text,
+      img: pendingImg, category: $("postCat").value,
+      time: serverTimestamp(), likes: [], fires: [], commentCount: 0
+    });
+    $("postText").value = "";
+    pendingImg = "";
+    $("preview").classList.add("hidden");
+    $("photoBtn").textContent = "📷 Add photo";
+    $("photoFile").value = "";
+    say("");
+  } catch (e) { say(friendly(e)); }
+};
+async function react(id, field, on) {
+  try {
+    await updateDoc(doc(db, "posts", id), { [field]: on ? arrayRemove(auth.currentUser.uid) : arrayUnion(auth.currentUser.uid) });
+  } catch (e) { say(friendly(e)); }
+}
+async function delPost(id) {
+  if (!confirm("Delete this post?")) return;
+  try { await deleteDoc(doc(db, "posts", id)); } catch (e) { say(friendly(e)); }
+}
+
+// ---------- comments ----------
+function refreshPosts() {
+  renderFeed();
+  if (viewUid && !$("tab-user").classList.contains("hidden")) renderUser();
+}
+function toggleCmts(id) {
+  if (openCmts.has(id)) {
+    openCmts.delete(id);
+    if (cmtUnsubs[id]) { cmtUnsubs[id](); delete cmtUnsubs[id]; }
+    refreshPosts();
+    return;
+  }
+  openCmts.add(id);
+  const q = query(collection(db, "posts", id, "comments"), orderBy("time"), limit(100));
+  cmtUnsubs[id] = onSnapshot(q, snap => {
+    cmtData[id] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    refreshPosts();
+  }, e => say(friendly(e)));
+  refreshPosts();
+}
+async function addComment(p, text) {
+  if (!myProfile && !isOwner()) { say("Save your profile first."); showTab("me"); return; }
+  try {
+    await addDoc(collection(db, "posts", p.id, "comments"), { uid: auth.currentUser.uid, name: myName(), text: text, time: serverTimestamp() });
+    await updateDoc(doc(db, "posts", p.id), { commentCount: increment(1) });
+    say("");
+  } catch (e) { say(friendly(e)); }
+}
+async function delComment(postId, cid) {
+  if (!confirm("Delete this comment?")) return;
+  try {
+    await deleteDoc(doc(db, "posts", postId, "comments", cid));
+    await updateDoc(doc(db, "posts", postId), { commentCount: increment(-1) });
+  } catch (e) { say(friendly(e)); }
+}
+function cmtBox(p) {
+  const me = auth.currentUser;
+  const box = mk("div", "cmts");
+  const list = cmtData[p.id];
+  if (!list) box.appendChild(mk("div", "mut", "Loading..."));
+  else if (!list.length) box.appendChild(mk("div", "mut", "No comments yet. Say something!"));
+  else list.forEach(cm => {
+    const r = mk("div", "cmt");
+    const t = mk("div");
+    const n = mk("b", "", cm.name || "Player");
+    if (cm.uid === ownerUid) n.appendChild(mk("span", "badge", "👑"));
+    t.appendChild(n);
+    t.appendChild(document.createTextNode(" " + cm.text));
+    r.appendChild(t);
+    if (cm.uid === me.uid || isOwner()) {
+      const x = mk("span", "cx", "🗑");
+      x.onclick = () => delComment(p.id, cm.id);
+      r.appendChild(x);
+    }
+    box.appendChild(r);
+  });
+  const inp = mk("input");
+  inp.placeholder = "Write a comment";
+  inp.maxLength = 300;
+  inp.value = drafts[p.id] || "";
+  inp.oninput = () => { drafts[p.id] = inp.value; };
+  box.appendChild(inp);
+  box.appendChild(btn("Send", "", async () => {
+    const t = inp.value.trim();
+    if (!t) return;
+    drafts[p.id] = "";
+    inp.value = "";
+    await addComment(p, t);
+  }));
+  return box;
+}
+
+// ---------- reports ----------
+async function sendReport(data) {
+  const reason = prompt("Why are you reporting this? Write a short reason.");
+  if (reason === null) return;
+  const u = auth.currentUser;
+  try {
+    await addDoc(collection(db, "reports"), Object.assign({
+      by: u.uid, byName: myName(), reason: reason.trim().slice(0, 120), time: serverTimestamp()
+    }, data));
+    say("");
+    alert("Thank you. The Owner will check it.");
+  } catch (e) { say(friendly(e)); }
+}
+function reportPost(p) {
+  sendReport({ targetUid: p.uid, targetName: p.name || "Player", postId: p.id, snippet: (p.text || "[photo]").slice(0, 120) });
+}
+function reportPlayer(p) {
+  sendReport({ targetUid: p.uid, targetName: p.gameName || "Player", postId: "", snippet: "" });
+}
+
+// ---------- feed ----------
+function postCard(p) {
+  const me = auth.currentUser;
+  const c = mk("div", "post");
+  const head = mk("div", "row link");
+  head.appendChild(avatar(p.name, p.uid));
+  const info = mk("div", "info");
+  info.appendChild(nameLine(p.name, p.uid));
+  info.appendChild(mk("span", "mut", (CATS[p.category] || CATS.gaming) + " · " + timeText(p.time)));
+  head.appendChild(info);
+  head.onclick = () => showUser(p.uid);
+  c.appendChild(head);
+  if (p.text) c.appendChild(mk("p", "", p.text));
+  if (p.img && String(p.img).startsWith("data:image/")) {
+    const im = mk("img");
+    im.src = p.img;
+    c.appendChild(im);
+  }
+  const likes = p.likes || [], fires = p.fires || [];
+  const l = likes.includes(me.uid), f = fires.includes(me.uid);
+  c.appendChild(btn((l ? "❤️ " : "🤍 ") + likes.length, "ghost", () => react(p.id, "likes", l)));
+  c.appendChild(btn("🔥 " + fires.length + (f ? " ✓" : ""), "ghost", () => react(p.id, "fires", f)));
+  c.appendChild(btn("💬 " + (p.commentCount || 0), "ghost", () => toggleCmts(p.id)));
+  if (p.uid !== me.uid) c.appendChild(btn("🚩", "ghost", () => reportPost(p)));
+  if (p.uid === me.uid || isOwner()) c.appendChild(btn("🗑", "ghost", () => delPost(p.id)));
+  if (openCmts.has(p.id)) c.appendChild(cmtBox(p));
+  return c;
+}
+function renderCatBar() {
+  const bar = $("catBar");
+  bar.innerHTML = "";
+  [["all", "🌐 All"], ["gaming", CATS.gaming], ["lifestyle", CATS.lifestyle], ["fun", CATS.fun]].forEach(o => {
+    const b = mk("button", "catbtn" + (feedCat === o[0] ? " on" : ""), o[1]);
+    b.onclick = () => { feedCat = o[0]; renderCatBar(); renderFeed(); };
+    bar.appendChild(b);
+  });
+}
+function renderFeed() {
+  if (!auth.currentUser) return;
+  const box = $("feed");
+  box.innerHTML = "";
+  const list = posts.filter(p => feedCat === "all" || (p.category || "gaming") === feedCat);
+  if (!list.length) { box.appendChild(mk("div", "card mut", "No posts here yet. Be the first to post!")); return; }
+  list.forEach(p => box.appendChild(postCard(p)));
+}
+function renderStrip() {
+  const s = $("strip");
+  s.innerHTML = "";
+  const on = players.filter(isOnline);
+  if (!on.length) { s.appendChild(mk("span", "mut", "Nobody online right now.")); return; }
+  on.forEach(p => {
+    const it = mk("div", "it link");
+    it.appendChild(avatar(p.gameName, p.uid));
+    it.firstChild.style.margin = "0 auto 4px";
+    it.appendChild(mk("div", "", p.gameName));
+    it.onclick = () => showUser(p.uid);
+    s.appendChild(it);
+  });
+}
+renderCatBar();
+
+// ---------- friend actions ----------
+function actionFor(p) {
+  const me = auth.currentUser;
+  const id = [p.uid, me.uid].sort().join("_");
+  const r = reqs[id];
+  const box = mk("div");
+  if (!r) {
+    const sel = mk("select");
+    ["Free Fire", "Call of Duty"].forEach(g => sel.appendChild(mk("option", "", g)));
+    sel.value = p.game || "Free Fire";
+    box.appendChild(sel);
+    box.appendChild(btn("➕ Send request", "", () => sendReq(p, id, sel.value)));
+  } else if (r.status === "accepted") {
+    box.appendChild(status("✅ Friends"));
+    box.appendChild(btn("💬 Chat", "", () => openDM(id, p.gameName)));
+  } else if (r.from === me.uid) {
+    box.appendChild(status("⏳ Request sent (" + (r.game || "") + ")"));
+  } else {
+    box.appendChild(status("📩 Wants to play " + (r.game || "")));
+    box.appendChild(btn("✔ Accept", "green", () => acceptReq(id)));
+  }
+  return box;
+}
+async function sendReq(p, id, game) {
+  const me = auth.currentUser.uid;
+  try {
+    await setDoc(doc(db, "requests", id), { from: me, to: p.uid, participants: [me, p.uid], status: "pending", game: game });
+    say("");
+  } catch (e) { say(friendly(e)); }
+}
+async function declineReq(id) {
+  try { await deleteDoc(doc(db, "requests", id)); say(""); }
+  catch (e) { say(friendly(e)); }
+}
+async function acceptReq(id) {
+  try { await updateDoc(doc(db, "requests", id), { status: "accepted" }); say(""); }
+  catch (e) { say(friendly(e)); }
+}
+
+// ---------- players list ----------
+function personRow(p, quick) {
+  const d = mk("div", "row");
+  d.style.cssText = "padding:12px 0;border-top:1px solid var(--line)";
+  const left = mk("div", "row link");
+  left.style.flex = "1";
+  left.appendChild(avatar(p.gameName, p.uid));
+  const info = mk("div", "info");
+  info.appendChild(nameLine(p.gameName, p.uid));
+  info.appendChild(mk("span", "mut", (p.game || "") + (isOnline(p) ? " · 🟢 Online" : " · offline")));
+  if (quick) {
+    info.appendChild(mk("div", "mut", followersOf(p.uid) + " followers · " + likesOf(p.uid) + " likes"));
+    const f = amFollowing(p.uid);
+    info.appendChild(btn(f ? "✓ Following" : "➕ Follow", f ? "ghost" : "green", () => toggleFollow(p.uid)));
+    const rid = [p.uid, auth.currentUser.uid].sort().join("_");
+    const r = reqs[rid];
+    if (!r) info.appendChild(btn("👋 Add friend", "", () => sendReq(p, rid, p.game || "Free Fire")));
+    else if (r.status === "accepted") info.appendChild(btn("💬 Chat", "", () => openDM(rid, p.gameName)));
+    else if (r.from === auth.currentUser.uid) info.appendChild(mk("div", "status", "⏳ Request sent"));
+    else info.appendChild(btn("✔ Accept friend", "green", () => acceptReq(rid)));
+  }
+  left.appendChild(info);
+  left.onclick = () => showUser(p.uid);
+  d.appendChild(left);
+  return d;
+}
+function renderPlayers() {
+  const me = auth.currentUser;
+  if (!me) return;
+  $("count").textContent = players.length;
+  $("onlineCount").textContent = players.filter(isOnline).length;
+  $("ownerState").textContent = ownerOnline() ? "🟢 Owner is online" : "⚫ Owner is offline · the bot 🤖 is helping";
+  renderStrip();
+  const pl = $("players"), inc = $("incoming"), fr = $("friends");
+  pl.innerHTML = ""; inc.innerHTML = ""; fr.innerHTML = "";
+
+  const term = ($("playerSearch").value || "").trim().toLowerCase();
+  const others = players.filter(p => p.uid !== me.uid);
+  const sorted = others
+    .filter(p => !term || String(p.gameName || "").toLowerCase().includes(term) || String(p.gameUid || "").toLowerCase().includes(term))
+    .sort((a, b) => (isOnline(b) ? 1 : 0) - (isOnline(a) ? 1 : 0));
+  sorted.forEach(p => pl.appendChild(personRow(p, true)));
+  if (!others.length) pl.appendChild(mk("p", "mut", "No other players yet. Invite your friends!"));
+  else if (!sorted.length) pl.appendChild(mk("p", "mut", "No player found with that name."));
+
+  let hasInc = false, hasFr = false, incCount = 0;
+  Object.keys(reqs).forEach(id => {
+    const r = reqs[id];
+    const otherUid = r.participants.find(x => x !== me.uid);
+    const p = players.find(x => x.uid === otherUid) || { uid: otherUid, gameName: "Player", game: "", gameUid: "" };
+    if (r.status === "pending" && r.to === me.uid) {
+      hasInc = true; incCount++;
+      const row = personRow(p);
+      const extra = mk("div");
+      extra.appendChild(status("Wants to play " + (r.game || "")));
+      extra.appendChild(btn("✔ Accept", "green", () => acceptReq(id)));
+      extra.appendChild(btn("✖ Decline", "ghost", () => declineReq(id)));
+      row.querySelector(".info").appendChild(extra);
+      inc.appendChild(row);
+    } else if (r.status === "accepted") {
+      hasFr = true;
+      const row = personRow(p);
+      row.querySelector(".info").appendChild(btn("💬 Chat", "", () => openDM(id, p.gameName)));
+      fr.appendChild(row);
+    }
+  });
+  if (!hasInc) inc.appendChild(mk("p", "mut", "No new requests."));
+  $("friendsLbl").textContent = incCount ? "Friends (" + incCount + ")" : "Friends";
+  $("friendsLbl").style.color = incCount ? "#f4b400" : "";
+  if (!hasFr) fr.appendChild(mk("p", "mut", "No friends yet. Open a player's page and send a request."));
+  renderAdmin();
+  if (viewUid && !$("tab-user").classList.contains("hidden")) renderUser();
+}
+
+// ---------- public page ----------
+function showUser(uid) { viewUid = uid; renderUser(); showTab("user"); }
+function renderUser() {
+  const box = $("userBox");
+  box.innerHTML = "";
+  const me = auth.currentUser;
+  const p = players.find(x => x.uid === viewUid);
+  if (!p) { box.appendChild(mk("div", "card mut", "Player not found.")); return; }
+  const c = mk("div", "card");
+  const head = mk("div", "row");
+  head.appendChild(avatar(p.gameName, p.uid, true));
+  const info = mk("div", "info");
+  info.appendChild(nameLine(p.gameName, p.uid));
+  info.appendChild(mk("span", "mut", isOnline(p) ? "🟢 Online now" : "⚫ Offline"));
+  head.appendChild(info);
+  c.appendChild(head);
+  const st = mk("div", "stat");
+  st.style.margin = "10px 0";
+  [["Followers", followersOf(p.uid)], ["Following", followingOf(p).length], ["Likes", likesOf(p.uid)]].forEach(x => {
+    const d = mk("div");
+    d.appendChild(mk("b", "", String(x[1])));
+    d.appendChild(document.createTextNode(x[0]));
+    st.appendChild(d);
+  });
+  c.appendChild(st);
+  c.appendChild(mk("div", "uidline", "🎮 " + (p.game || "") + "  ·  UID: " + (p.gameUid || "-")));
+  const cp = btn("📋 Copy UID", "ghost", async () => {
+    try { await navigator.clipboard.writeText(p.gameUid || ""); cp.textContent = "✅ Copied"; }
+    catch (e) { say("Could not copy. Hold the UID and copy it."); }
+  });
+  c.appendChild(cp);
+  if (p.uid !== me.uid) {
+    const fl = amFollowing(p.uid);
+    c.appendChild(btn(fl ? (p.uid === ownerUid ? "✓ Following the Owner" : "✓ Following") : "➕ Follow", fl ? "ghost" : "green", () => toggleFollow(p.uid)));
+    c.appendChild(actionFor(p));
+    c.appendChild(btn("🚩 Report player", "ghost", () => reportPlayer(p)));
+  }
+  box.appendChild(c);
+  const mine = posts.filter(x => x.uid === p.uid);
+  box.appendChild(mk("h3", "", "Posts"));
+  if (!mine.length) box.appendChild(mk("p", "mut", "No posts yet."));
+  mine.forEach(x => box.appendChild(postCard(x)));
+}
+
+// ---------- chat rendering ----------
+function renderMsgs(log, snap) {
+  const me = auth.currentUser;
+  log.innerHTML = "";
+  snap.forEach(m => {
+    const x = m.data();
+    let cls = "fr", label = "";
+    if (x.from === "bot") { cls = "bot"; label = "🤖 Owner's Assistant"; }
+    else if (x.from === me.uid) { cls = "me"; }
+    else { label = (x.owner || x.from === ownerUid ? "👑 Owner" : (x.name || "")); }
+    const isSticker = typeof x.text === "string" && x.text.indexOf("[s]") === 0;
+    const d = mk("div", cls + (isSticker ? " sticker" : ""));
+    if (label) d.appendChild(mk("div", "who", label));
+    if (isSticker) {
+      const parts = x.text.slice(3).split("|");
+      d.appendChild(mk("div", "stk", parts[0]));
+      if (parts[1]) d.appendChild(mk("div", "stkl", parts[1]));
+    } else {
+      d.appendChild(mk("div", "", x.text));
+    }
+    if (x.time && x.time.seconds) d.appendChild(mk("div", "tm", new Date(x.time.seconds * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })));
+    log.appendChild(d);
+  });
+  log.scrollTop = log.scrollHeight;
+}
+async function addMsg(path, text, extra) {
+  await addDoc(collection(db, ...path), Object.assign({ text: text, time: serverTimestamp() }, extra));
+}
+
+// ---------- private chat (friends + owner replying to appeals) ----------
+function openDM(id, name) { openChatCtx({ path: ["chats", id, "messages"], title: "💬 " + name, back: "friends" }); }
+function openChatCtx(ctx) {
+  chatCtx = ctx;
+  $("chatTitle").textContent = ctx.title;
+  showTab("chat");
+  if (chatUnsub) chatUnsub();
+  const q = query(collection(db, ...ctx.path), orderBy("time"));
+  chatUnsub = onSnapshot(q, snap => renderMsgs($("chatLog"), snap), e => say(friendly(e)));
+}
+$("sendBtn").onclick = async () => {
+  const text = $("chatInput").value.trim();
+  if (!text || !chatCtx) return;
+  const u = auth.currentUser;
+  try {
+    const ownerReply = !!chatCtx.appealUid && isOwner();
+    await addMsg(chatCtx.path, text, { from: u.uid, name: myName(), owner: ownerReply });
+    if (ownerReply) await updateDoc(doc(db, "appeals", chatCtx.appealUid), { last: "👑 " + text, time: serverTimestamp(), answered: true });
+    $("chatInput").value = "";
+  } catch (e) { say(friendly(e)); }
+};
+$("closeChat").onclick = () => {
+  if (chatUnsub) chatUnsub();
+  chatUnsub = null;
+  const back = chatCtx ? chatCtx.back : "friends";
+  chatCtx = null;
+  showTab(back);
+};
+
+// ---------- community room + owner bot ----------
+const RULES_TEXT = "Rules: respect everyone, no insults or threats, no nudity or inappropriate pictures, no scams or fake UIDs. See a bad post? Tap the 🚩 under it.";
+function botAnswer(t) {
+  const s = t.toLowerCase();
+  if (/\b(password|forgot|reset|log ?in|sign ?in|can'?t enter|cannot enter)\b/.test(s))
+    return "Login problem? On the first screen type your email, then tap Forgot password. We will send a reset link to your email (check spam too). If the account is restricted, you will see an Appeal box after logging in.";
+  if (/\b(ban|banned|restrict|restricted|blocked|suspend\w*|appeal|unban)\b/.test(s))
+    return "If your account is restricted, you will see an Appeal box on your screen. Message the Owner there. Most restrictions last 30 days, and the account comes back by itself when the time ends.";
+  if (/\b(rule|rules)\b/.test(s)) return RULES_TEXT;
+  if (/\b(report|reporting|abuse|insult|harass\w*|scam\w*|fake)\b/.test(s))
+    return "To report a bad post, tap the 🚩 under it. To report a player, open his page and tap Report player. The Owner reads every report and can restrict rule breakers.";
+  if (/\b(post|posting|photo|picture|image|upload)\b/.test(s))
+    return "To post: open Home, choose a category (Gaming, Lifestyle or Fun), write your text, tap Add photo if you want, then tap Post. Players can like, 🔥 and comment on it.";
+  if (/\b(categor\w*|lifestyle|fun|gaming)\b/.test(s))
+    return "Home has 3 categories: 🎮 Gaming, 🌍 Lifestyle and 😂 Fun. Choose one when you post, and use the buttons above the feed to filter.";
+  if (/\b(comment|comments|reply)\b/.test(s))
+    return "Tap the 💬 button under any post to read and write comments.";
+  if (/\b(install|download|app|home screen|icon)\b/.test(s))
+    return "To install: on Android Chrome tap Me, then Install app (or the ⋮ menu, then Add to Home screen). On iPhone use Safari, tap Share, then Add to Home Screen.";
+  if (/\b(profile|change name|username|game name|edit)\b/.test(s))
+    return "Open the Me tab, change your game name or UID, then tap Save my profile.";
+  if (/\b(delete|remove)\b/.test(s))
+    return "You can delete your own post with the 🗑 button under it. To delete your whole account, message the Owner.";
+  if (/\b(owner|jeffrey|admin|boss)\b/.test(s))
+    return "Jeffrey Nwokoleme is the Owner of this community. He is offline now, but he will read your message when he comes online.";
+  if (/\b(friend|friends|request|add)\b/.test(s))
+    return "To add a friend: open Players, tap a name, choose Free Fire or Call of Duty, then tap Send request. When he accepts, tap Chat.";
+  if (/\buid\b/.test(s))
+    return "Every player's game UID is on his page. Tap Players, open a name, and tap Copy UID.";
+  if (/\b(thanks|thank you|thx)\b/.test(s)) return "You are welcome! 🎮";
+  if (/\b(help|menu|what can you do)\b/.test(s))
+    return "I can help with: login and password, restrictions and appeals, rules, reporting, posting, friend requests, UIDs and installing the app. Just ask!";
+  if (/\b(hi|hello|hey|good morning|good evening)\b/.test(s))
+    return "Hello! 👋 Welcome to Game Chat Hub. Type help to see what I can do.";
+  if (s.includes("?"))
+    return "Thanks for your question. The Owner is offline now and will reply when he is back. Type help to see what I can answer now.";
+  return "";
+}
+$("roomSend").onclick = async () => {
+  const text = $("roomInput").value.trim();
+  if (!text) return;
+  const u = auth.currentUser;
+  const name = isOwner() ? "Jeffrey Nwokoleme" : (myProfile ? myProfile.gameName : "Player");
+  try {
+    await addMsg(["rooms", "main", "messages"], text, { from: u.uid, name: name, owner: !!isOwner() });
+    $("roomInput").value = "";
+    if (!isOwner() && !ownerOnline()) {
+      const a = botAnswer(text);
+      if (a) await addMsg(["rooms", "main", "messages"], a, { from: "bot", name: "Bot" });
+    }
+  } catch (e) { say(friendly(e)); }
+};
+
+// ---------- admin (owner) ----------
+function renderAdmin() {
+  if (!isOwner()) return;
+  const box = $("adminList");
+  box.innerHTML = "";
+  const me = auth.currentUser;
+  players.forEach(p => {
+    if (p.uid === me.uid) return;
+    const row = personRow(p);
+    const info = row.querySelector(".info");
+    const b = bans[p.uid];
+    if (restricted(b)) {
+      info.appendChild(status(b.until === 0 ? "🚫 Restricted forever" : "🚫 Restricted until " + dateText(b.until)));
+      info.appendChild(btn("Unban now", "green", () => unban(p.uid)));
+    } else {
+      const sel = mk("select");
+      [["30", "30 days"], ["7", "7 days"], ["1", "1 day"], ["0", "Forever"]].forEach(o => {
+        const op = mk("option", "", o[1]); op.value = o[0]; sel.appendChild(op);
+      });
+      info.appendChild(sel);
+      info.appendChild(btn("🚫 Restrict", "red", () => ban(p, parseInt(sel.value, 10))));
+    }
+    box.appendChild(row);
+  });
+  if (!box.children.length) box.appendChild(mk("p", "mut", "No players yet."));
+}
+function renderAppeals() {
+  if (!isOwner()) return;
+  const box = $("appealList");
+  box.innerHTML = "";
+  if (!appeals.length) { box.appendChild(mk("p", "mut", "No appeals yet.")); return; }
+  appeals.forEach(a => {
+    const row = mk("div");
+    row.style.cssText = "padding:10px 0;border-top:1px solid var(--line)";
+    row.appendChild(mk("b", "", (a.answered ? "✅ " : "🆕 ") + (a.name || "Player")));
+    row.appendChild(mk("div", "mut", (a.last || "").slice(0, 90)));
+    row.appendChild(btn("Open and reply", "", () => openChatCtx({ path: ["appeals", a.id, "messages"], title: "📨 Appeal: " + (a.name || "Player"), back: "room", appealUid: a.id })));
+    box.appendChild(row);
+  });
+}
+function renderReports() {
+  if (!isOwner()) return;
+  const box = $("reportList");
+  box.innerHTML = "";
+  $("repCount").textContent = reports.length ? " (" + reports.length + ")" : "";
+  if (!reports.length) { box.appendChild(mk("p", "mut", "No reports. All clear 🎉")); return; }
+  reports.forEach(r => {
+    const row = mk("div");
+    row.style.cssText = "padding:10px 0;border-top:1px solid var(--line)";
+    row.appendChild(mk("b", "", "🚩 " + (r.targetName || "Player")));
+    row.appendChild(mk("div", "mut", "Reported by " + (r.byName || "Player") + ": " + (r.reason || "no reason given")));
+    if (r.snippet) row.appendChild(mk("div", "uidline", r.snippet));
+    row.appendChild(btn("View page", "ghost", () => showUser(r.targetUid)));
+    if (r.postId) row.appendChild(btn("🗑 Delete post", "red", () => delReportedPost(r)));
+    row.appendChild(btn("🚫 Restrict 30 days", "red", () => ban(players.find(x => x.uid === r.targetUid) || { uid: r.targetUid, gameName: r.targetName || "Player" }, 30)));
+    row.appendChild(btn("Dismiss", "green", () => dismissReport(r.id)));
+    box.appendChild(row);
+  });
+}
+async function delReportedPost(r) {
+  if (!confirm("Delete this post and close the report?")) return;
+  try {
+    await deleteDoc(doc(db, "posts", r.postId));
+    await deleteDoc(doc(db, "reports", r.id));
+  } catch (e) { say(friendly(e)); }
+}
+async function dismissReport(id) {
+  try { await deleteDoc(doc(db, "reports", id)); }
+  catch (e) { say(friendly(e)); }
+}
+async function ban(p, days) {
+  if (!confirm("Restrict " + p.gameName + (days ? " for " + days + " days?" : " forever?"))) return;
+  try { await setDoc(doc(db, "banned", p.uid), { uid: p.uid, name: p.gameName, until: days ? Date.now() + days * DAY : 0, time: serverTimestamp() }); }
+  catch (e) { say(friendly(e)); }
+}
+async function unban(uid) {
+  try { await deleteDoc(doc(db, "banned", uid)); }
+  catch (e) { say(friendly(e)); }
+}
+
+// ---------- appeals (restricted player) ----------
+$("appealSend").onclick = async () => {
+  const text = $("appealInput").value.trim();
+  const u = auth.currentUser;
+  if (!text || !u) return;
+  const name = myProfile ? myProfile.gameName : (u.email || "Player");
+  try {
+    await setDoc(doc(db, "appeals", u.uid), { uid: u.uid, name: name, last: text, time: serverTimestamp(), answered: false }, { merge: true });
+    await addMsg(["appeals", u.uid, "messages"], text, { from: u.uid, name: name });
+    $("appealInput").value = "";
+    if (!ownerOnline() && lastAppealFrom !== "bot") {
+      const left = myBan && myBan.until ? Math.max(1, Math.ceil((myBan.until - Date.now()) / DAY)) : 0;
+      const msg = left
+        ? "Hello " + name + "! I am the assistant of Jeffrey Nwokoleme, the Owner. Your account is restricted for breaking the community rules. It will open again on " + dateText(myBan.until) + " (" + left + " days left). Your message is saved and the Owner will read it when he is online. Please be patient and respectful."
+        : "Hello " + name + "! I am the assistant of Jeffrey Nwokoleme, the Owner. Your account is restricted for breaking the community rules. Your message is saved and the Owner will read it when he is online. Please be patient and respectful.";
+      await addMsg(["appeals", u.uid, "messages"], msg, { from: "bot", name: "Bot" });
+    }
+  } catch (e) { say(friendly(e)); }
+};
+
+// ---------- emoji, stickers and Enter key ----------
+const EMOJIS = Array.from("😀😃😄😁😆😅😂🤣😊😇🙂😉😍🥰😘😋😎🤩🥳😏😒😞😔😢😭😤😡🤬🤯😱😨😰🥶🥵🤔🤫🤭🙄😴🤮🤧😷🤝👍👎👏🙌🙏💪👊✌️🤞👌🫡👀🧠💀👻🤖👽🔥💥✨⭐🌟💯❤️🧡💛💚💙💜🖤💔🏆🥇🎮🕹️🔫💣🎯🎧🎵🎉🎊🎁🍕🍔🍟🍗🍺🥤⚽🏀🚀💎👑");
+const STICKERS = [
+  ["🏆", "EZ WIN"], ["🔥", "BOOYAH!"], ["😎", "CLUTCH"], ["💀", "I'M DEAD"],
+  ["😂", "NOOB 😂"], ["🤝", "RESPECT"], ["🎯", "HEADSHOT"], ["👑", "KING"],
+  ["💪", "LET'S GO"], ["😭", "SO CLOSE"], ["🤣", "LOL"], ["👏", "WELL PLAYED"],
+  ["🎮", "GG"], ["🥳", "WE WON"], ["😡", "RAGE"], ["❤️", "LOVE IT"]
+];
+function attachPicker(input, sendBtn) {
+  const bar = mk("div", "row");
+  bar.style.gap = "8px";
+  const panel = mk("div", "picker hidden");
+  const bE = mk("button", "ghost sm", "😊");
+  const bS = mk("button", "ghost sm", "🎭");
+  let mode = "";
+  function show(m) {
+    if (mode === m && !panel.classList.contains("hidden")) { panel.classList.add("hidden"); return; }
+    mode = m;
+    panel.innerHTML = "";
+    if (m === "emoji") {
+      EMOJIS.forEach(e => {
+        const sp = mk("span", "em", e);
+        sp.onclick = () => { input.value += e; input.focus(); };
+        panel.appendChild(sp);
+      });
+    } else {
+      STICKERS.forEach(st => {
+        const it = mk("div", "stp");
+        it.appendChild(mk("div", "stk", st[0]));
+        it.appendChild(mk("div", "stkl", st[1]));
+        it.onclick = async () => {
+          const old = input.value;
+          input.value = "[s]" + st[0] + "|" + st[1];
+          panel.classList.add("hidden");
+          try { await sendBtn.onclick(); } catch (e) {}
+          input.value = old;
+        };
+        panel.appendChild(it);
+      });
+    }
+    panel.classList.remove("hidden");
+  }
+  bE.onclick = () => show("emoji");
+  bS.onclick = () => show("stickers");
+  bar.appendChild(bE); bar.appendChild(bS);
+  sendBtn.insertAdjacentElement("afterend", bar);
+  bar.insertAdjacentElement("afterend", panel);
+}
+attachPicker($("chatInput"), $("sendBtn"));
+attachPicker($("roomInput"), $("roomSend"));
+[["chatInput", "sendBtn"], ["roomInput", "roomSend"], ["appealInput", "appealSend"]].forEach(pair => {
+  $(pair[0]).addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $(pair[1]).click(); } });
+});
+
+// ---------- presence ----------
+async function ping() {
+  const u = auth.currentUser;
+  if (!u) return;
+  try {
+    if (myProfile) await updateDoc(doc(db, "players", u.uid), { lastSeen: Date.now() });
+    if (isOwner()) await setDoc(doc(db, "config", "owner"), { uid: u.uid, lastSeen: Date.now() }, { merge: true });
+  } catch (e) {}
+}
+
+// ---------- rules popup ----------
+$("rulesOk").onclick = () => {
+  try { localStorage.setItem("rulesSeenV1", "1"); } catch (e) {}
+  $("rulesModal").classList.add("hidden");
+};
+
+// ---------- start / stop ----------
+function stopAll() {
+  unsubs.forEach(u => u());
+  unsubs = [];
+  Object.keys(cmtUnsubs).forEach(k => cmtUnsubs[k]());
+  cmtUnsubs = {}; cmtData = {}; openCmts = new Set(); drafts = {};
+  [chatUnsub, roomUnsub, appealUnsub].forEach(u => { if (u) u(); });
+  chatUnsub = roomUnsub = appealUnsub = null;
+  if (presenceTimer) { clearInterval(presenceTimer); presenceTimer = null; }
+  mainStarted = false;
+  players = []; reqs = {}; posts = []; bans = {}; appeals = []; reports = [];
+  myProfile = null; autoFollowDone = false; ownerUid = null; ownerSeen = 0; viewUid = null; chatCtx = null; myBan = null; lastAppealFrom = "";
+}
+
+function startMain(user, sid) {
+  if (mainStarted) return;
+  mainStarted = true;
+  try { if (!localStorage.getItem("rulesSeenV1")) $("rulesModal").classList.remove("hidden"); } catch (e) {}
+  $("who").textContent = "Logged in as " + user.email;
+  $("adminBox").classList.toggle("hidden", !isOwner());
+
+  getDoc(doc(db, "players", user.uid)).then(mine => {
+    if (mine.exists()) {
+      $("gameName").value = mine.data().gameName;
+      $("game").value = mine.data().game;
+      $("uid").value = mine.data().gameUid;
+    }
+  }).catch(() => {});
+
+  unsubs.push(onSnapshot(doc(db, "config", "owner"), d => {
+    if (d.exists()) { ownerUid = d.data().uid || null; ownerSeen = d.data().lastSeen || 0; }
+    ensureFollowOwner();
+    renderPlayers(); renderFeed();
+  }, () => {}));
+
+  unsubs.push(onSnapshot(collection(db, "players"), snap => {
+    players = snap.docs.map(d => d.data());
+    myProfile = players.find(p => p.uid === user.uid) || null;
+    $("meName").textContent = myProfile ? myProfile.gameName : "Welcome";
+    setAv($("meAv"), myProfile ? myProfile.gameName : "?", myProfile && myProfile.photo);
+    setAv($("meAv2"), myProfile ? myProfile.gameName : "?", myProfile && myProfile.photo);
+    ensureFollowOwner();
+    renderPlayers(); renderFeed();
+  }, e => say(friendly(e))));
+
+  const rq = query(collection(db, "requests"), where("participants", "array-contains", user.uid));
+  unsubs.push(onSnapshot(rq, snap => {
+    reqs = {};
+    snap.forEach(d => { reqs[d.id] = d.data(); });
+    renderPlayers();
+  }, e => say(friendly(e))));
+
+  const pq = query(collection(db, "posts"), orderBy("time", "desc"), limit(100));
+  unsubs.push(onSnapshot(pq, snap => {
+    posts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    refreshPosts();
+    renderPlayers();
+  }, e => say(friendly(e))));
+
+  const rm = query(collection(db, "rooms", "main", "messages"), orderBy("time"), limit(80));
+  roomUnsub = onSnapshot(rm, snap => renderMsgs($("roomLog"), snap), e => say(friendly(e)));
+
+  if (isOwner()) {
+    unsubs.push(onSnapshot(collection(db, "banned"), snap => {
+      bans = {};
+      snap.forEach(d => { bans[d.id] = d.data(); });
+      renderAdmin();
+    }, e => say(friendly(e))));
+    unsubs.push(onSnapshot(collection(db, "appeals"), snap => {
+      appeals = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      appeals.sort((a, b) => ((b.time && b.time.seconds) || 0) - ((a.time && a.time.seconds) || 0));
+      renderAppeals();
+    }, e => say(friendly(e))));
+    unsubs.push(onSnapshot(query(collection(db, "reports"), orderBy("time", "desc"), limit(50)), snap => {
+      reports = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderReports();
+    }, e => say(friendly(e))));
+  }
+
+  ping();
+  presenceTimer = setInterval(() => { ping(); renderPlayers(); }, 60000);
+  setTimeout(() => {
+    if (sid !== session) return;
+    if (!myProfile && !isOwner()) { showTab("me"); say("Welcome! Fill your game name and UID first."); }
+    else showTab("home");
+  }, 800);
+}
+
+function showRestricted(user) {
+  $("app").classList.add("hidden");
+  $("nav").classList.add("hidden");
+  $("bannedBox").classList.remove("hidden");
+  $("banText").textContent = myBan.until
+    ? "You broke the community rules. Your account opens again on " + dateText(myBan.until) + ". You can write to the Owner below."
+    : "You broke the community rules. Your account is restricted. You can write to the Owner below.";
+  if (appealUnsub) appealUnsub();
+  const q = query(collection(db, "appeals", user.uid, "messages"), orderBy("time"));
+  appealUnsub = onSnapshot(q, snap => {
+    renderMsgs($("appealLog"), snap);
+    const arr = snap.docs.map(d => d.data());
+    lastAppealFrom = arr.length ? arr[arr.length - 1].from : "";
+  }, () => {});
+}
+
+onAuthStateChanged(auth, user => {
+  session++;
+  const sid = session;
+  stopAll();
+  say("");
+  if (!user) {
+    $("authBox").classList.remove("hidden");
+    $("bannedBox").classList.add("hidden");
+    $("app").classList.add("hidden");
+    $("nav").classList.add("hidden");
+    return;
+  }
+  $("authBox").classList.add("hidden");
+
+  // watch my own restriction live
+  unsubs.push(onSnapshot(doc(db, "banned", user.uid), d => {
+    if (sid !== session) return;
+    myBan = d.exists() ? d.data() : null;
+    if (restricted(myBan) && !isOwner()) {
+      showRestricted(user);
+    } else {
+      if (appealUnsub) { appealUnsub(); appealUnsub = null; }
+      $("bannedBox").classList.add("hidden");
+      $("app").classList.remove("hidden");
+      $("nav").classList.remove("hidden");
+      startMain(user, sid);
+    }
+  }, () => {
+    if (sid !== session) return;
+    $("app").classList.remove("hidden");
+    $("nav").classList.remove("hidden");
+    startMain(user, sid);
+  }));
+});
+</script>
+<script>
+/* Chat wallpapers. Saved on this phone only. Does not touch Firebase. */
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var seed = 11;
+  function rnd() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+  function f1(n) { return n.toFixed(1); }
+  function wrap(inner, dim) {
+    return "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 800' preserveAspectRatio='xMidYMid slice'>" + inner +
+      "<rect width='400' height='800' fill='#000' fill-opacity='" + (dim || 0.18) + "'/></svg>";
+  }
+  function uri(svg) { return 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '") center / cover no-repeat'; }
+  function lg(id, stops, x2, y2) {
+    var s = "<linearGradient id='" + id + "' x1='0' y1='0' x2='" + (x2 || 0) + "' y2='" + (y2 === undefined ? 1 : y2) + "'>";
+    stops.forEach(function (st) { s += "<stop offset='" + st[0] + "' stop-color='" + st[1] + "'" + (st[2] !== undefined ? " stop-opacity='" + st[2] + "'" : "") + "/>"; });
+    return s + "</linearGradient>";
+  }
+  function rg(id, c, o) {
+    return "<radialGradient id='" + id + "'><stop offset='0' stop-color='" + c + "' stop-opacity='" + o + "'/><stop offset='1' stop-color='" + c + "' stop-opacity='0'/></radialGradient>";
+  }
+
+  /* 1. Web Hero */
+  function web(cx, cy, a0, a1, n, radii) {
+    var s = "", pts = [], i, a;
+    for (i = 0; i <= n; i++) {
+      a = (a0 + (a1 - a0) * i / n) * Math.PI / 180; pts.push(a);
+      s += "<line x1='" + cx + "' y1='" + cy + "' x2='" + f1(cx + 1100 * Math.cos(a)) + "' y2='" + f1(cy + 1100 * Math.sin(a)) + "'/>";
+    }
+    radii.forEach(function (r) {
+      for (i = 0; i < n; i++) {
+        var p = pts[i], q = pts[i + 1], m = (p + q) / 2;
+        s += "<path d='M" + f1(cx + r * Math.cos(p)) + " " + f1(cy + r * Math.sin(p)) +
+          " Q" + f1(cx + r * 0.86 * Math.cos(m)) + " " + f1(cy + r * 0.86 * Math.sin(m)) +
+          " " + f1(cx + r * Math.cos(q)) + " " + f1(cy + r * Math.sin(q)) + "'/>";
+      }
+    });
+    return "<g fill='none' stroke='#fff' stroke-opacity='.4' stroke-width='1.6'>" + s + "</g>";
+  }
+  function spider(x, y) {
+    var s = "<g stroke='#fff' stroke-opacity='.85' stroke-width='2' fill='none'><line x1='" + x + "' y1='0' x2='" + x + "' y2='" + (y - 18) + "'/>";
+    [-1, 1].forEach(function (sg) {
+      for (var k = 0; k < 4; k++) {
+        s += "<path d='M" + x + " " + y + " L" + (x + sg * (20 + k * 4)) + " " + (y - 16 + k * 12) + " L" + (x + sg * (34 + k * 5)) + " " + (y + 8 + k * 13) + "'/>";
+      }
+    });
+    return s + "</g><circle cx='" + x + "' cy='" + y + "' r='13' fill='#111'/><circle cx='" + x + "' cy='" + (y - 17) + "' r='8' fill='#111'/>";
+  }
+  var svgWeb = wrap("<defs>" + lg("g", [[0, "#e62429"], [0.55, "#8f0f1f"], [1, "#0b1d5c"]], 1, 1) + "</defs><rect width='400' height='800' fill='url(#g)'/>" +
+    web(400, 0, 90, 180, 8, [70, 140, 220, 320, 440, 580]) + web(0, 800, 270, 360, 8, [60, 120, 190, 280]) + spider(110, 270), 0.12);
+
+  /* 2. Ninja Village */
+  function shuriken(x, y, s, rot) {
+    return "<g transform='translate(" + x + " " + y + ") rotate(" + rot + ") scale(" + s + ")'><polygon points='0,-1 .25,-.25 1,0 .25,.25 0,1 -.25,.25 -1,0 -.25,-.25' fill='#e8e8f0' fill-opacity='.85'/><circle r='.14' fill='#1a1030'/></g>";
+  }
+  function spiral(cx, cy) {
+    var d = "", t;
+    for (t = 0; t < 18.9; t += 0.15) { d += (t ? "L" : "M") + f1(cx + (6 + t * 9) * Math.cos(t)) + " " + f1(cy + (6 + t * 9) * Math.sin(t)); }
+    return "<path d='" + d + "' fill='none' stroke='#fff' stroke-opacity='.35' stroke-width='3'/>";
+  }
+  var svgNinja = wrap("<defs>" + lg("g", [[0, "#0b1030"], [0.5, "#3a1a4a"], [1, "#ff7a1a"]]) + rg("s", "#ffd27a", 1) + "</defs><rect width='400' height='800' fill='url(#g)'/>" +
+    "<circle cx='200' cy='520' r='210' fill='url(#s)'/>" + spiral(200, 520) +
+    shuriken(70, 120, 26, 20) + shuriken(320, 200, 18, -15) + shuriken(250, 90, 12, 40) + shuriken(90, 300, 14, 10) + shuriken(340, 380, 22, 35) +
+    "<path d='M0 800 L0 690 L90 625 L170 700 L260 610 L340 690 L400 650 L400 800Z' fill='#12081c'/>", 0.1);
+
+  /* 3. Fire Squad */
+  var fl = "", i, x, h, w;
+  for (i = 0; i < 9; i++) {
+    x = i * 48 + rnd() * 20; h = 200 + rnd() * 260; w = 55 + rnd() * 30;
+    fl += "<path d='M" + f1(x - w) + " 800 C" + f1(x - w) + " " + f1(800 - h * 0.3) + " " + f1(x - w * 0.2) + " " + f1(800 - h * 0.55) + " " + f1(x) + " " + f1(800 - h) +
+      " C" + f1(x + w * 0.1) + " " + f1(800 - h * 0.6) + " " + f1(x + w) + " " + f1(800 - h * 0.35) + " " + f1(x + w) + " 800Z' fill='url(#f)' fill-opacity='.8'/>";
+  }
+  for (i = 0; i < 30; i++) { fl += "<circle cx='" + f1(rnd() * 400) + "' cy='" + f1(300 + rnd() * 450) + "' r='" + f1(1 + rnd() * 2.5) + "' fill='#ffd166' fill-opacity='" + f1(0.4 + rnd() * 0.6).replace(".0", "") + "'/>"; }
+  var svgFire = wrap("<defs>" + lg("g", [[0, "#14040a"], [0.6, "#5a0d05"], [1, "#b22200"]]) + lg("f", [[0, "#ffb300"], [1, "#ff2d00"]]) + "</defs><rect width='400' height='800' fill='url(#g)'/>" + fl, 0.1);
+
+  /* 4. Night Ops */
+  var ops = "<g stroke='#3dff8a' stroke-opacity='.18' stroke-width='1'>";
+  for (i = 0; i <= 400; i += 50) { ops += "<line x1='" + i + "' y1='0' x2='" + i + "' y2='800'/>"; }
+  for (i = 0; i <= 800; i += 50) { ops += "<line x1='0' y1='" + i + "' x2='400' y2='" + i + "'/>"; }
+  ops += "</g><g fill='none' stroke='#3dff8a' stroke-opacity='.5' stroke-width='2'><circle cx='200' cy='400' r='60'/><circle cx='200' cy='400' r='120'/>" +
+    "<line x1='200' y1='250' x2='200' y2='350'/><line x1='200' y1='450' x2='200' y2='550'/><line x1='50' y1='400' x2='150' y2='400'/><line x1='250' y1='400' x2='350' y2='400'/>" +
+    "<path d='M20 60 V20 H60'/><path d='M340 20 H380 V60'/><path d='M20 740 V780 H60'/><path d='M340 780 H380 V740'/></g><circle cx='200' cy='400' r='4' fill='#3dff8a'/>";
+  var svgOps = wrap("<defs>" + lg("g", [[0, "#04110b"], [1, "#0e3320"]]) + "</defs><rect width='400' height='800' fill='url(#g)'/>" + ops, 0.1);
+
+  /* 5. Neon City */
+  var city = "";
+  for (x = 0; x < 400; x += 28) {
+    h = 90 + rnd() * 260;
+    city += "<rect x='" + x + "' y='" + f1(800 - h) + "' width='27' height='" + f1(h) + "' fill='#0a0414'/>";
+    for (var wy = 800 - h + 10; wy < 790; wy += 16) { if (rnd() > 0.55) { city += "<rect x='" + (x + 5 + Math.floor(rnd() * 3) * 7) + "' y='" + f1(wy) + "' width='4' height='6' fill='#ffd166' fill-opacity='.85'/>"; } }
+  }
+  var svgNeon = wrap("<defs>" + lg("g", [[0, "#12002b"], [0.55, "#5b0a7a"], [1, "#ff2d95"]]) + lg("s", [[0, "#ffe66d"], [1, "#ff2d95"]]) + "</defs><rect width='400' height='800' fill='url(#g)'/>" +
+    "<circle cx='200' cy='470' r='125' fill='url(#s)'/>" + city, 0.08);
+
+  /* 6. Galaxy */
+  var stars = "";
+  for (i = 0; i < 110; i++) { stars += "<circle cx='" + f1(rnd() * 400) + "' cy='" + f1(rnd() * 800) + "' r='" + f1(0.3 + rnd() * 1.4) + "' fill='#fff' fill-opacity='" + f1(0.35 + rnd() * 0.65) + "'/>"; }
+  var svgGalaxy = wrap("<defs>" + rg("a", "#6d28d9", 0.55) + rg("b", "#db2777", 0.45) + rg("c", "#0ea5e9", 0.35) + lg("p", [[0, "#fbbf24"], [1, "#b45309"]], 1, 1) + "</defs>" +
+    "<rect width='400' height='800' fill='#05010f'/><circle cx='120' cy='200' r='240' fill='url(#a)'/><circle cx='300' cy='580' r='280' fill='url(#b)'/><circle cx='200' cy='420' r='200' fill='url(#c)'/>" + stars +
+    "<circle cx='310' cy='150' r='42' fill='url(#p)'/><ellipse cx='310' cy='150' rx='78' ry='16' fill='none' stroke='#fde68a' stroke-opacity='.7' stroke-width='4' transform='rotate(-18 310 150)'/>", 0.05);
+
+  /* 7. Naija Pride */
+  var svgNaija = wrap("<defs>" + lg("sh", [[0, "#fff", 0.18], [1, "#fff", 0]], 1, 1) + "</defs><rect width='134' height='800' fill='#008751'/><rect x='133' width='134' height='800' fill='#dfe9df'/><rect x='266' width='134' height='800' fill='#008751'/><rect width='400' height='800' fill='url(#sh)'/>", 0.3);
+
+  var WP = [
+    { id: "none", name: "Default", css: "" },
+    { id: "web", name: "🕸️ Web Hero", css: uri(svgWeb) },
+    { id: "ninja", name: "🍥 Ninja Village", css: uri(svgNinja) },
+    { id: "fire", name: "🔥 Fire Squad", css: uri(svgFire) },
+    { id: "ops", name: "🎯 Night Ops", css: uri(svgOps) },
+    { id: "neon", name: "🌆 Neon City", css: uri(svgNeon) },
+    { id: "galaxy", name: "🌌 Galaxy", css: uri(svgGalaxy) },
+    { id: "naija", name: "🇳🇬 Naija Pride", css: uri(svgNaija) }
+  ];
+
+  function ls(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function sv(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
+  var custom = ls("wpCustom") || "";
+  var current = ls("wp") || "none";
+
+  /* Real pictures: put files named wp-naruto.jpg, wp-spiderman.jpg ... in the GitHub repo and they appear here. */
+  var PHOTOS = [["naruto", "🍥 Naruto"], ["spiderman", "🕷️ Spider-Man"], ["goku", "🐉 Goku"], ["batman", "🦇 Batman"], ["freefire", "🔥 Free Fire"], ["cod", "🎯 Call of Duty"], ["pic1", "🖼️ Picture 1"], ["pic2", "🖼️ Picture 2"]];
+  var found = [], probed = false;
+  function probe(key, name) {
+    var ex = ["jpg", "jpeg", "png", "webp"], i = 0;
+    (function next() {
+      if (i >= ex.length) return;
+      var u = "wp-" + key + "." + ex[i++], im = new Image();
+      im.onload = function () { found.push({ url: u, name: name }); if (!$("wpModal").classList.contains("hidden")) build(); };
+      im.onerror = next;
+      im.src = u;
+    })();
+  }
+  function cssFor(id) {
+    if (id.indexOf("p:") === 0) return 'linear-gradient(rgba(0,0,0,.2),rgba(0,0,0,.2)), url("' + id.slice(2) + '") center / cover no-repeat';
+    if (id === "mine") return custom ? 'linear-gradient(rgba(0,0,0,.25),rgba(0,0,0,.25)), url("' + custom + '") center / cover no-repeat' : "";
+    for (var k = 0; k < WP.length; k++) { if (WP[k].id === id) return WP[k].css; }
+    return "";
+  }
+  function apply(id) {
+    var css = cssFor(id);
+    if (!css) id = "none";
+    if (css) document.documentElement.style.setProperty("--wp-bg", css);
+    else document.documentElement.style.removeProperty("--wp-bg");
+    current = id;
+    sv("wp", id);
+    document.querySelectorAll(".wpTile").forEach(function (t) { t.classList.toggle("on", t.dataset.id === id); });
+  }
+  function tile(id, name, css) {
+    var t = document.createElement("div");
+    t.className = "wpTile" + (id === current ? " on" : "");
+    t.dataset.id = id;
+    t.style.background = css || "var(--inp)";
+    var l = document.createElement("div");
+    l.className = "wpName";
+    l.textContent = name;
+    t.appendChild(l);
+    t.onclick = function () { apply(id); };
+    return t;
+  }
+  function build() {
+    var g = $("wpGrid");
+    g.innerHTML = "";
+    WP.forEach(function (w) { g.appendChild(tile(w.id, w.name, w.css)); });
+    if (custom) g.appendChild(tile("mine", "📷 My picture", cssFor("mine")));
+    found.forEach(function (p) { g.appendChild(tile("p:" + p.url, p.name, cssFor("p:" + p.url))); });
+  }
+  function open() { if (!probed) { probed = true; PHOTOS.forEach(function (p) { probe(p[0], p[1]); }); } build(); $("wpNote").textContent = ""; $("wpModal").classList.remove("hidden"); }
+  function close() { $("wpModal").classList.add("hidden"); }
+
+  $("wpBtnChat").onclick = open;
+  $("wpBtnRoom").onclick = open;
+  $("wpClose").onclick = close;
+  $("wpModal").onclick = function (e) { if (e.target === this) close(); };
+  $("wpOwn").onclick = function () { $("wpFile").click(); };
+  $("wpFile").onchange = function () {
+    var file = this.files && this.files[0];
+    this.value = "";
+    if (!file) return;
+    var fr = new FileReader();
+    fr.onload = function () {
+      var im = new Image();
+      im.onload = function () {
+        var sc = Math.min(1, 1280 / Math.max(im.width, im.height));
+        var c = document.createElement("canvas");
+        c.width = Math.round(im.width * sc);
+        c.height = Math.round(im.height * sc);
+        c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+        custom = c.toDataURL("image/jpeg", 0.82);
+        var ok = sv("wpCustom", custom);
+        build();
+        apply("mine");
+        $("wpNote").textContent = ok ? "Done. Your picture is now your chat wallpaper." : "Your picture works for now, but this phone could not save it. Try a smaller picture.";
+      };
+      im.onerror = function () { $("wpNote").textContent = "That file is not a picture. Choose a photo."; };
+      im.src = fr.result;
+    };
+    fr.readAsDataURL(file);
+  };
+
+  apply(current);
+})();
+</script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  $("roomOpen").onclick = function () {
+    $("roomChat").classList.add("full");
+    setTimeout(function () { var l = $("roomLog"); l.scrollTop = l.scrollHeight; }, 50);
+  };
+  $("roomBack").onclick = function () { $("roomChat").classList.remove("full"); };
+})();
+</script>
+</body>
+</html>
