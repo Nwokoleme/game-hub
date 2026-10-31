@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Game Chat Hub - by Jeffrey Nwokoleme</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:Arial,sans-serif;background:#070714;color:#fff;margin:0;min-height:100vh;overflow-x:hidden}
+.orb{position:fixed;border-radius:50%;filter:blur(80px);opacity:.55;z-index:0;animation:float 9s ease-in-out infinite}
+.o1{width:260px;height:260px;background:#7c3aed;top:-60px;left:-60px}
+.o2{width:240px;height:240px;background:#06b6d4;bottom:80px;right:-80px;animation-delay:2s}
+.o3{width:200px;height:200px;background:#22c55e;top:45%;left:-90px;animation-delay:4s}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-30px)}}
+.wrap{position:relative;z-index:1;padding:16px 16px 100px;max-width:520px;margin:0 auto}
+.top{display:flex;align-items:center;justify-content:space-between;padding:6px 2px 14px}
+.logo{font-weight:900;font-size:18px;letter-spacing:2px;background:linear-gradient(90deg,#a78bfa,#22d3ee,#4ade80);-webkit-background-clip:text;background-clip:text;color:transparent}
+.badge{font-size:11px;border:1px solid #facc15;color:#facc15;padding:4px 10px;border-radius:20px}
+.hero{text-align:center;padding:26px 8px 10px}
+.hero h1{font-size:40px;line-height:1.05;margin:0;font-weight:900;background:linear-gradient(90deg,#c4b5fd,#22d3ee,#4ade80);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 18px rgba(124,58,237,.7))}
+.hero p{color:#cbd5e1;margin:12px 0 4px;font-size:15px}
+.chips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:14px 0}
+.chip{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);padding:6px 12px;border-radius:20px;font-size:12px}
+.glass{background:rgba(255,255,255,.07);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.14);border-radius:20px;padding:18px;margin:14px 0;box-shadow:0 10px 40px rgba(0,0,0,.4)}
+.glass h2{margin:0 0 10px;font-size:20px}
+input,select,button{display:block;width:100%;padding:15px;margin:10px 0;font-size:16px;border-radius:14px;border:none;font-family:inherit}
+input,select{background:rgba(10,10,30,.8);color:#fff;border:1px solid #4c3fa8}
+input:focus,select:focus{outline:none;border-color:#22d3ee;box-shadow:0 0 14px rgba(34,211,238,.6)}
+.btn{background:linear-gradient(90deg,#22c55e,#06b6d4);color:#fff;font-weight:bold;box-shadow:0 6px 20px rgba(34,197,94,.45)}
+.btn.alt{background:linear-gradient(90deg,#7c3aed,#c026d3);box-shadow:0 6px 20px rgba(124,58,237,.5)}
+.btn:active{transform:scale(.96)}
+.sm{width:auto;display:inline-block;padding:10px 16px;margin:10px 8px 0 0;font-size:14px}
+.card{display:flex;align-items:center;gap:12px;background:rgba(10,10,30,.7);border:1px solid rgba(255,255,255,.1);border-left:4px solid #22d3ee;padding:12px;border-radius:16px;margin:10px 0}
+.av{flex:none;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#22d3ee);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:20px}
+.info{flex:1;min-width:0}
+.info b{display:block;font-size:16px;overflow:hidden;text-overflow:ellipsis}
+.info small{color:#94a3b8}
+.status{color:#facc15;font-size:13px}
+#msg{color:#facc15;text-align:center;min-height:20px;font-size:14px;margin:4px 0}
+#chatLog{background:#05060f;height:260px;overflow:auto;padding:10px;border-radius:14px;border:1px solid #4c3fa8}
+.me{background:linear-gradient(90deg,#7c3aed,#06b6d4);padding:8px 12px;border-radius:14px 14px 2px 14px;margin:6px 0 6px auto;width:fit-content;max-width:80%}
+.fr{background:#1e1b3a;padding:8px 12px;border-radius:14px 14px 14px 2px;margin:6px auto 6px 0;width:fit-content;max-width:80%}
+.owner{text-align:center;border:2px solid #facc15;box-shadow:0 0 28px rgba(250,204,21,.45)}
+.crown{font-size:46px}
+.owner h3{margin:6px 0 2px;font-size:22px;color:#facc15;text-shadow:0 0 12px rgba(250,204,21,.7)}
+.owner p{margin:2px 0;color:#e2e8f0;font-size:14px}
+.stat{display:flex;gap:10px}
+.stat div{flex:1;text-align:center;background:rgba(10,10,30,.7);border-radius:14px;padding:14px}
+.stat b{display:block;font-size:26px;color:#4ade80}
+.games{display:flex;gap:10px}
+.gcard{flex:1;text-align:center;background:rgba(10,10,30,.7);border:1px dashed #7c3aed;border-radius:16px;padding:16px}
+.gcard span{display:block;font-size:34px}
+.gcard small{color:#facc15}
+ul{padding-left:20px;color:#cbd5e1;font-size:14px;line-height:1.7;margin:0}
+nav{position:fixed;bottom:0;left:0;right:0;z-index:5;display:flex;background:rgba(10,10,30,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid rgba(255,255,255,.15);padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+nav button{flex:1;width:auto;margin:0;padding:8px 2px;background:none;color:#94a3b8;font-size:11px;border-radius:12px;box-shadow:none}
+nav button span{display:block;font-size:22px}
+nav button.on{color:#22d3ee;background:rgba(34,211,238,.12)}
+footer{text-align:center;color:#94a3b8;font-size:12px;padding:20px 0}
+footer b{color:#facc15}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div>
+
+<div class="wrap">
+  <div class="top">
+    <div class="logo">🎮 GAME CHAT HUB</div>
+    <div class="badge">👑 Jeffrey Nwokoleme</div>
+  </div>
+  <p id="msg"></p>
+
+  <div id="authBox">
+    <div class="hero">
+      <h1>PLAY.<br>CONNECT.<br>DOMINATE.</h1>
+      <p>The community for Call of Duty and Free Fire players.</p>
+      <div class="chips">
+        <div class="chip">🔫 Call of Duty</div>
+        <div class="chip">🔥 Free Fire</div>
+        <div class="chip">💬 Private Chat</div>
+      </div>
+    </div>
+    <div class="glass">
+      <h2>Join the community</h2>
+      <input id="email" type="email" placeholder="Email">
+      <input id="password" type="password" placeholder="Password (6+ characters)">
+      <button id="signupBtn" class="btn">Create account</button>
+      <button id="loginBtn" class="btn alt">Log in</button>
+    </div>
+  </div>
+
+  <div id="app" class="hidden">
+
+    <div id="tab-players">
+      <div class="glass">
+        <h2>👥 Players</h2>
+        <small style="color:#94a3b8">Send a friend request. Chat opens after they accept.</small>
+        <div id="players"></div>
+      </div>
+    </div>
+
+    <div id="tab-friends" class="hidden">
+      <div class="glass">
+        <h2>📩 Requests</h2>
+        <div id="incoming"></div>
+      </div>
+      <div class="glass">
+        <h2>💬 My Friends</h2>
+        <div id="friends"></div>
+      </div>
+      <div id="chatBox" class="glass hidden">
+        <h2 id="chatTitle"></h2>
+        <div id="chatLog"></div>
+        <input id="chatInput" placeholder="Type a message">
+        <button id="sendBtn" class="btn">Send</button>
+        <button id="closeChat" class="btn alt">Close chat</button>
+      </div>
+    </div>
+
+    <div id="tab-community" class="hidden">
+      <div class="glass owner">
+        <div class="crown">👑</div>
+        <small style="color:#94a3b8">OWNER OF THE APP</small>
+        <h3>Jeffrey Nwokoleme</h3>
+        <p>Owner and Founder of Game Chat Hub</p>
+        <p>🇳🇬 Nigeria</p>
+      </div>
+      <div class="glass">
+        <h2>📊 Community</h2>
+        <div class="stat">
+          <div><b id="count">0</b>Players</div>
+          <div><b>2</b>Games</div>
+        </div>
+      </div>
+      <div class="glass">
+        <h2>🕹️ Games</h2>
+        <div class="games">
+          <div class="gcard"><span>🔫</span>Shooter<br><small>Coming soon</small></div>
+          <div class="gcard"><span>🧠</span>Quiz<br><small>Coming soon</small></div>
+        </div>
+      </div>
+      <div class="glass">
+        <h2>📜 Rules</h2>
+        <ul>
+          <li>Respect every player.</li>
+          <li>No insults or threats.</li>
+          <li>No scams or fake UIDs.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div id="tab-profile" class="hidden">
+      <div class="glass">
+        <h2>⚙️ My Profile</h2>
+        <p id="who" style="color:#94a3b8;font-size:14px"></p>
+        <input id="gameName" placeholder="Your game name">
+        <select id="game">
+          <option>Call of Duty</option>
+          <option>Free Fire</option>
+        </select>
+        <input id="uid" placeholder="Your game UID">
+        <button id="saveBtn" class="btn">Save my profile</button>
+        <button id="logoutBtn" class="btn alt">Log out</button>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>© Game Chat Hub · Owned and created by <b>Jeffrey Nwokoleme</b></footer>
+</div>
+
+<nav id="nav" class="hidden">
+  <button data-tab="players" class="on"><span>👥</span>Players</button>
+  <button data-tab="friends"><span>💬</span>Friends</button>
+  <button data-tab="community"><span>🏆</span>Community</button>
+  <button data-tab="profile"><span>⚙️</span>Profile</button>
+</nav>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, updateDoc, addDoc, collection, query, where, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCTNxprto8tS76qr9opP1CCPaDD8dNZNRI",
+  authDomain: "game-chat-hub.firebaseapp.com",
+  projectId: "game-chat-hub",
+  storageBucket: "game-chat-hub.firebasestorage.app",
+  messagingSenderId: "87164754087",
+  appId: "1:87164754087:web:2fa11234447e6129b06382"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const $ = id => document.getElementById(id);
+const say = t => { $("msg").textContent = t; };
+
+let players = [];
+let reqs = {};
+let unsubs = [];
+let chatUnsub = null;
+let currentChat = null;
+
+function showTab(name) {
+  ["players","friends","community","profile"].forEach(t => {
+    $("tab-" + t).classList.toggle("hidden", t !== name);
+  });
+  document.querySelectorAll("nav button").forEach(b => {
+    b.classList.toggle("on", b.dataset.tab === name);
+  });
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll("nav button").forEach(b => {
+  b.onclick = () => showTab(b.dataset.tab);
+});
+
+$("signupBtn").onclick = async () => {
+  try {
+    await createUserWithEmailAndPassword(auth, $("email").value, $("password").value);
+    say("Account created!");
+  } catch (e) { say(e.message); }
+};
+
+$("loginBtn").onclick = async () => {
+  try {
+    await signInWithEmailAndPassword(auth, $("email").value, $("password").value);
+    say("Welcome back!");
+  } catch (e) { say(e.message); }
+};
+
+$("logoutBtn").onclick = () => signOut(auth);
+
+$("saveBtn").onclick = async () => {
+  const user = auth.currentUser;
+  if (!user) return;
+  if (!$("gameName").value || !$("uid").value) { say("Fill your game name and UID"); return; }
+  try {
+    await setDoc(doc(db, "players", user.uid), {
+      uid: user.uid,
+      gameName: $("gameName").value,
+      game: $("game").value,
+      gameUid: $("uid").value
+    });
+    say("Profile saved! Go to Players.");
+  } catch (e) { say(e.message); }
+};
+
+function btn(text, cls, fn) {
+  const b = document.createElement("button");
+  b.className = "btn sm " + cls;
+  b.textContent = text;
+  b.onclick = fn;
+  return b;
+}
+
+function card(p, extra) {
+  const d = document.createElement("div");
+  d.className = "card";
+  const av = document.createElement("div");
+  av.className = "av";
+  av.textContent = (p.gameName || "?").charAt(0).toUpperCase();
+  const info = document.createElement("div");
+  info.className = "info";
+  const n = document.createElement("b");
+  n.textContent = p.gameName || "Player";
+  const s = document.createElement("small");
+  s.textContent = (p.game || "") + " · UID: " + (p.gameUid || "-");
+  info.appendChild(n);
+  info.appendChild(s);
+  if (extra) info.appendChild(extra);
+  d.appendChild(av);
+  d.appendChild(info);
+  return d;
+}
+
+function txt(t) {
+  const s = document.createElement("div");
+  s.className = "status";
+  s.textContent = t;
+  return s;
+}
+
+function render() {
+  const me = auth.currentUser;
+  if (!me) return;
+  $("count").textContent = players.length;
+
+  const pl = $("players");
+  const inc = $("incoming");
+  const fr = $("friends");
+  pl.innerHTML = ""; inc.innerHTML = ""; fr.innerHTML = "";
+
+  players.forEach(p => {
+    if (p.uid === me.uid) return;
+    const id = [p.uid, me.uid].sort().join("_");
+    const r = reqs[id];
+    let extra;
+    if (!r) {
+      extra = document.createElement("div");
+      extra.appendChild(btn("➕ Add friend", "", () => sendReq(p, id)));
+    } else if (r.status === "accepted") {
+      extra = txt("✅ Friends");
+    } else if (r.from === me.uid) {
+      extra = txt("⏳ Request sent");
+    } else {
+      extra = txt("📩 Sent you a request (see Friends)");
+    }
+    pl.appendChild(card(p, extra));
+  });
+  if (!pl.children.length) pl.innerHTML = "<p style='color:#94a3b8'>No other players yet. Invite your friends!</p>";
+
+  let hasInc = false, hasFr = false;
+  Object.keys(reqs).forEach(id => {
+    const r = reqs[id];
+    const otherUid = r.participants.find(x => x !== me.uid);
+    const p = players.find(x => x.uid === otherUid) || { gameName: "Player", game: "", gameUid: "" };
+    if (r.status === "pending" && r.to === me.uid) {
+      hasInc = true;
+      const extra = document.createElement("div");
+      extra.appendChild(btn("✔ Accept", "", () => acceptReq(id)));
+      inc.appendChild(card(p, extra));
+    } else if (r.status === "accepted") {
+      hasFr = true;
+      const extra = document.createElement("div");
+      extra.appendChild(btn("💬 Chat", "alt", () => openChat(id, p.gameName)));
+      fr.appendChild(card(p, extra));
+    }
+  });
+  if (!hasInc) inc.innerHTML = "<p style='color:#94a3b8'>No new requests.</p>";
+  if (!hasFr) fr.innerHTML = "<p style='color:#94a3b8'>No friends yet. Add players first.</p>";
+}
+
+async function sendReq(p, id) {
+  const me = auth.currentUser.uid;
+  try {
+    await setDoc(doc(db, "requests", id), {
+      from: me, to: p.uid, participants: [me, p.uid], status: "pending"
+    });
+    say("Request sent!");
+  } catch (e) { say(e.message); }
+}
+
+async function acceptReq(id) {
+  try {
+    await updateDoc(doc(db, "requests", id), { status: "accepted" });
+    say("Accepted! You can chat now.");
+  } catch (e) { say(e.message); }
+}
+
+function openChat(id, name) {
+  currentChat = id;
+  $("chatBox").classList.remove("hidden");
+  $("chatTitle").textContent = "💬 " + name;
+  if (chatUnsub) chatUnsub();
+  const q = query(collection(db, "chats", id, "messages"), orderBy("time"));
+  chatUnsub = onSnapshot(q, snap => {
+    const log = $("chatLog");
+    log.innerHTML = "";
+    snap.forEach(m => {
+      const x = m.data();
+      const line = document.createElement("div");
+      line.className = x.from === auth.currentUser.uid ? "me" : "fr";
+      line.textContent = x.text;
+      log.appendChild(line);
+    });
+    log.scrollTop = log.scrollHeight;
+  }, e => say(e.message));
+  $("chatBox").scrollIntoView({ behavior: "smooth" });
+}
+
+$("sendBtn").onclick = async () => {
+  const text = $("chatInput").value.trim();
+  if (!text || !currentChat) return;
+  try {
+    await addDoc(collection(db, "chats", currentChat, "messages"), {
+      from: auth.currentUser.uid, text: text, time: serverTimestamp()
+    });
+    $("chatInput").value = "";
+  } catch (e) { say(e.message); }
+};
+
+$("closeChat").onclick = () => {
+  if (chatUnsub) chatUnsub();
+  chatUnsub = null;
+  currentChat = null;
+  $("chatBox").classList.add("hidden");
+};
+
+onAuthStateChanged(auth, async user => {
+  unsubs.forEach(u => u());
+  unsubs = [];
+  if (chatUnsub) { chatUnsub(); chatUnsub = null; }
+  if (!user) {
+    $("authBox").classList.remove("hidden");
+    $("app").classList.add("hidden");
+    $("nav").classList.add("hidden");
+    return;
+  }
+  $("authBox").classList.add("hidden");
+  $("app").classList.remove("hidden");
+  $("nav").classList.remove("hidden");
+  $("who").textContent = "Logged in as " + user.email;
+
+  let hasProfile = false;
+  try {
+    const mine = await getDoc(doc(db, "players", user.uid));
+    if (mine.exists()) {
+      hasProfile = true;
+      $("gameName").value = mine.data().gameName;
+      $("game").value = mine.data().game;
+      $("uid").value = mine.data().gameUid;
+    }
+  } catch (e) { say(e.message); }
+
+  if (hasProfile) { showTab("players"); }
+  else { showTab("profile"); say("Welcome! Fill your game name and UID first."); }
+
+  unsubs.push(onSnapshot(collection(db, "players"), snap => {
+    players = snap.docs.map(d => d.data());
+    render();
+  }, e => say(e.message)));
+
+  const rq = query(collection(db, "requests"), where("participants", "array-contains", user.uid));
+  unsubs.push(onSnapshot(rq, snap => {
+    reqs = {};
+    snap.forEach(d => { reqs[d.id] = d.data(); });
+    render();
+  }, e => say(e.message)));
+});
+</script>
+</body>
+  </html>
