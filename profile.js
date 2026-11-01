@@ -145,8 +145,8 @@ css.textContent = `
 #jcmBar button.send{width:auto;margin:0}
 `;
 css.textContent += `
-html,body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
-input,textarea,[contenteditable="true"]{-webkit-user-select:text;user-select:text}
+html,body,body *:not(input):not(textarea){-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important;-webkit-tap-highlight-color:transparent}
+input,textarea,[contenteditable="true"]{-webkit-user-select:text!important;user-select:text!important}
 img{-webkit-user-drag:none;-webkit-touch-callout:none}
 `;
 document.head.appendChild(css);
@@ -702,7 +702,9 @@ function openUser(uid) {
 // ---------- start ----------
 function ownerOnlyStrip() {
   const st = $("strip"); const card = st && st.closest(".card");
-  if (card) card.style.display = isOwner() ? "" : "none";
+  if (!card) return;
+  const anyOn = players.some(p => me && p.uid !== me.uid && isOnline(p));
+  card.style.display = (isOwner() && anyOn) ? "" : "none";
 }
 function renderAll() {
   if (!me) return;
