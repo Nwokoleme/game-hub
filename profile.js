@@ -66,10 +66,23 @@ function nameEl(name, uid) {
   if (uid && uid === ownerUid) b.appendChild(mk("span", "badge", "👑 OWNER"));
   return b;
 }
+// phone buzz (works when Jolt is closed), same push worker the chat uses
+const PUSH_URL = "https://winter-glitter-2dfe.saviatim3.workers.dev";
+async function pushTo(uid, body) {
+  try {
+    const pl = players.find(x => x.uid === uid);
+    const toks = (pl && pl.fcmTokens) || [];
+    if (!toks.length || !me) return;
+    const idt = await me.getIdToken();
+    await fetch(PUSH_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idToken: idt, tokens: toks, title: "Jolt", body: body, url: "./" }) });
+  } catch (e) {}
+}
 async function notify(to, type, postId, text) {
   try {
     if (!to || !me || to === me.uid) return;
     await addDoc(collection(db, "notifs"), { to: to, from: me.uid, fromName: myName(), type: type, postId: postId || "", text: text || "", time: serverTimestamp(), read: false });
+    const who = myName();
+    pushTo(to, type === "like" ? "❤️ " + who + " liked your post" : type === "fire" ? "🔥 " + who + " fired up your post" : "💬 " + who + " commented: " + (text || ""));
   } catch (e) {}
 }
 // shrink a picture so many fit in one post
@@ -337,6 +350,42 @@ function postCard(p, opt) {
 }
 document.addEventListener("click", () => document.querySelectorAll(".pmenu").forEach(m => m.classList.add("hidden")));
 
+// ---------- "New posts" button: new posts wait while you scroll, tap to see them ----------
+let knownIds = new Set(), heldIds = new Set(), firstPosts = true;
+function feedOk(p) { return p.uid !== me.uid && !postsHidden(p.uid) && (circle().has(p.uid) || p.uid === ownerUid); }
+function updateNewBtn() {
+  const b = $("jNew"); if (!b || !me) return;
+  const ok = circle();
+  const n = posts.filter(p => heldIds.has(p.id) && p.uid !== me.uid && !postsHidden(p.uid) && (ok.has(p.uid) || p.uid === ownerUid)).length;
+  b.classList.toggle("on", n > 0);
+  b.textContent = "⬆ " + n + (n === 1 ? " new post" : " new posts");
+}
+function releaseNew() {
+  if (!heldIds.size) return;
+  heldIds.clear(); renderFYP(); updateNewBtn();
+}
+function trackNew() {
+  if (!me) return;
+  const home = $("tab-home") && !$("tab-home").classList.contains("hidden");
+  const scrolled = (window.scrollY || 0) > 300;
+  posts.forEach(p => {
+    if (knownIds.has(p.id)) return;
+    knownIds.add(p.id);
+    if (!firstPosts && home && scrolled && p.uid !== me.uid) heldIds.add(p.id);
+  });
+  firstPosts = false;
+  updateNewBtn();
+}
+function buildNewBtn() {
+  const st = document.createElement("style");
+  st.textContent = "#jNew{position:fixed;top:76px;left:50%;transform:translateX(-50%);z-index:40;display:none;width:auto;margin:0;padding:9px 18px;border-radius:22px;border:none;background:#00ba7c;color:#fff;font-weight:700;font-size:14px;box-shadow:0 6px 20px rgba(0,0,0,.45)}#jNew.on{display:block}";
+  document.head.appendChild(st);
+  const b = mk("button", "", ""); b.id = "jNew"; b.type = "button";
+  b.onclick = () => { heldIds.clear(); renderFYP(); updateNewBtn(); window.scrollTo({ top: 0, behavior: "smooth" }); };
+  ($("tab-home") || document.body).appendChild(b);
+  window.addEventListener("scroll", () => { if ((window.scrollY || 0) < 80) releaseNew(); }, { passive: true });
+}
+
 // ---------- For You (friends and friends of friends, no date, no own posts) ----------
 function circle() {
   const out = new Set();
@@ -368,7 +417,7 @@ function renderFYP() {
   });
   box.appendChild(bar);
   const ok = circle();
-  const list = posts.filter(p => p.uid !== me.uid && !postsHidden(p.uid) && (ok.has(p.uid) || p.uid === ownerUid) && (feedCat === "all" || (p.category || "gaming") === feedCat));
+  const list = posts.filter(p => p.uid !== me.uid && !heldIds.has(p.id) && !postsHidden(p.uid) && (ok.has(p.uid) || p.uid === ownerUid) && (feedCat === "all" || (p.category || "gaming") === feedCat));
   if (!list.length) { box.appendChild(mk("div", "card mut", "Nothing here yet. Follow people, or search a name and add friends, to fill your For You page.")); checkCur(); return; }
   const shownList = list.slice(0, feedN);
   shownList.forEach(p => box.appendChild(postCard(p)));
@@ -805,16 +854,17 @@ function prepare() {
   new MutationObserver(adoptUser).observe($("userBox"), { childList: true });
   buildCommentSheet();
   buildPrivacy();
+  buildNewBtn();
   hookCamera();
   // stop music when leaving For You is handled by the observer (hidden = not visible)
 }
 onAuthStateChanged(auth, user => {
   unsubs.forEach(u => { try { u(); } catch (e) {} }); unsubs = [];
-  stopMusic(); me = user || null;
+  stopMusic(); me = user || null; knownIds = new Set(); heldIds = new Set(); firstPosts = true;
   if (!me) return;
   prepare();
   unsubs.push(onSnapshot(collection(db, "players"), snap => { players = snap.docs.map(d => ({ uid: d.id, ...d.data() })); schedule(); }, () => {}));
-  unsubs.push(onSnapshot(query(collection(db, "posts"), orderBy("time", "desc"), limit(60)), snap => { posts = snap.docs.map(d => ({ id: d.id, ...d.data() })); schedule(); }, () => {}));
+  unsubs.push(onSnapshot(query(collection(db, "posts"), orderBy("time", "desc"), limit(60)), snap => { posts = snap.docs.map(d => ({ id: d.id, ...d.data() })); trackNew(); schedule(); }, () => {}));
   unsubs.push(onSnapshot(query(collection(db, "requests"), where("participants", "array-contains", me.uid)), snap => { reqs = snap.docs.map(d => ({ id: d.id, ...d.data() })); schedule(); }, () => {}));
   unsubs.push(onSnapshot(doc(db, "config", "owner"), d => { const v = d.data(); ownerUid = (v && v.uid) || ""; schedule(); }, () => {}));
 });
