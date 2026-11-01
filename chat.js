@@ -3,7 +3,8 @@
    Chats: friends + groups, Jux inside chats, blue/red online dots, two blue ticks, streaks,
    requests, groups with name, disappearing messages (24h), read receipts switch.
    New in v2: emoji, stickers (built-in + your own pictures), photos, voice notes,
-   message reactions, copy, delete, share a post to a chat, block and report. */
+   message reactions, copy, delete, share a post to a chat, block and report.
+   v2.1: bold text (tap B, or type *text*). */
 import { getApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, updateDoc, addDoc, deleteDoc, collection, query, where, orderBy, limit, onSnapshot, serverTimestamp, arrayRemove, arrayUnion, deleteField } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -89,7 +90,9 @@ const STICKERS = [
 #cx .cxBar input{flex:1;margin:0;border-radius:22px;padding:11px 16px;min-width:0}
 #cx .cxBar button{width:44px;height:44px;padding:0;margin:0;border-radius:50%;font-size:19px;display:flex;align-items:center;justify-content:center;background:var(--btn);color:#fff;border:none;flex:none}
 #cx .cxBar #cxEmo,#cx .cxBar #cxAtt{background:transparent;color:var(--tx);font-size:22px;width:38px}
+#cx .cxBar #cxBold{background:transparent;color:var(--tx);font-size:20px;font-weight:900;width:34px;font-family:Georgia,serif}
 #cx .cxBar #cxRecX{background:#f4212e}
+.cxB b.bd{font-weight:800}
 #cx .cxBar #cxMic.recOn{width:auto;padding:0 14px;border-radius:22px;background:#f4212e;font-size:15px}
 #cx .hidden{display:none!important}
 #cxPanel{max-height:250px;overflow-y:auto;border-top:1px solid var(--line);background:var(--bg);padding:6px}
@@ -134,7 +137,7 @@ const STICKERS = [
   const cxEl = mk("div", "hidden"); cxEl.id = "cx";
   cxEl.innerHTML = '<div class="cxHead"><button id="cxBack" type="button" aria-label="Back">←</button><div id="cxAv"></div><div class="cxT"><b id="cxTitle"></b><span id="cxSub"></span></div><button id="cxMenu" type="button" aria-label="Options">⋯</button></div>' +
     '<div id="cxLog"></div><div id="cxLock" class="hidden"></div><div id="cxPanel" class="hidden"></div>' +
-    '<div class="cxBar"><button id="cxEmo" type="button" aria-label="Emoji and stickers">😊</button><input id="cxInput" placeholder="Type a message" maxlength="500" autocomplete="off"><button id="cxAtt" type="button" aria-label="Send a photo">📎</button><button id="cxRecX" class="hidden" type="button" aria-label="Cancel voice note">✕</button><button id="cxMic" type="button" aria-label="Voice note">🎤</button><button id="cxSend" class="hidden" type="button" aria-label="Send">➤</button></div>';
+    '<div class="cxBar"><button id="cxEmo" type="button" aria-label="Emoji and stickers">😊</button><button id="cxBold" type="button" aria-label="Bold text">B</button><input id="cxInput" placeholder="Type a message" maxlength="500" autocomplete="off"><button id="cxAtt" type="button" aria-label="Send a photo">📎</button><button id="cxRecX" class="hidden" type="button" aria-label="Cancel voice note">✕</button><button id="cxMic" type="button" aria-label="Voice note">🎤</button><button id="cxSend" class="hidden" type="button" aria-label="Send">➤</button></div>';
   document.body.appendChild(cxEl);
   const sheet = mk("div", "hidden"); sheet.id = "chSheet";
   document.body.appendChild(sheet);
@@ -190,7 +193,7 @@ const STICKERS = [
     if (t.indexOf("[k]") === 0) return "Sticker";
     if (t.indexOf("[i]") === 0) return "📷 Photo";
     if (t.indexOf("[p]") === 0) return "📌 Shared a post";
-    return t;
+    return t.replace(/\*([^*\n]+)\*/g, "$1");
   }
   const isPlain = t => !/^\[[vskip]\]/.test(t);
   function preview(m) { return (m.from === me.uid ? "You: " : "") + labelOf(m.text); }
@@ -538,7 +541,7 @@ const STICKERS = [
           card.onclick = () => openPostFromChat(d.id);
           b.appendChild(card);
         } else b.appendChild(document.createTextNode("📌 Shared a post"));
-      } else b.appendChild(document.createTextNode(t));
+      } else richText(b, t);
       // reactions
       const rc = {}; Object.values(m.reacts || {}).forEach(e => { rc[e] = (rc[e] || 0) + 1; });
       const rs = Object.keys(rc).map(e => e + (rc[e] > 1 ? " " + rc[e] : "")).join("  ");
@@ -664,6 +667,7 @@ const STICKERS = [
     $("cxMic").classList.toggle("hidden", has && !recording);
     $("cxAtt").classList.toggle("hidden", recording);
     $("cxEmo").classList.toggle("hidden", recording);
+    $("cxBold").classList.toggle("hidden", recording);
     $("cxInput").classList.toggle("hidden", recording);
   }
   $("cxSend").onclick = sendMsg;
@@ -672,6 +676,41 @@ const STICKERS = [
   $("cxInput").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); sendMsg(); } });
   $("cxBack").onclick = () => closeChat(false);
   document.addEventListener("visibilitychange", () => { if (!document.hidden && cx && cx.msgs.length) { const l = cx.msgs[cx.msgs.length - 1]; if (l.from !== me.uid) markRead(); } });
+
+  // ---------- bold text: *like this* shows bold ----------
+  function richText(box, t) {
+    const re = /\*([^*\n]+)\*/g;
+    let last = 0, m;
+    while ((m = re.exec(t))) {
+      if (m.index > last) box.appendChild(document.createTextNode(t.slice(last, m.index)));
+      box.appendChild(mk("b", "bd", m[1]));
+      last = m.index + m[0].length;
+    }
+    if (last < t.length) box.appendChild(document.createTextNode(t.slice(last)));
+  }
+  (function () {
+    const bb = $("cxBold"), inp = $("cxInput");
+    bb.addEventListener("pointerdown", e => e.preventDefault());
+    bb.onclick = () => {
+      const v = inp.value;
+      let s = inp.selectionStart == null ? v.length : inp.selectionStart;
+      let e = inp.selectionEnd == null ? s : inp.selectionEnd;
+      if (e > s) {
+        const sel = v.slice(s, e);
+        if (sel.length > 2 && sel[0] === "*" && sel[sel.length - 1] === "*") {
+          inp.value = v.slice(0, s) + sel.slice(1, -1) + v.slice(e);
+          inp.setSelectionRange(s, e - 2);
+        } else {
+          inp.value = v.slice(0, s) + "*" + sel + "*" + v.slice(e);
+          inp.setSelectionRange(s, e + 2);
+        }
+      } else {
+        inp.value = v.slice(0, s) + "**" + v.slice(s);
+        inp.setSelectionRange(s + 1, s + 1);
+      }
+      inp.focus(); syncBtn();
+    };
+  })();
 
   // ---------- emoji and stickers panel ----------
   function insertAtCursor(t) {
