@@ -1,6 +1,6 @@
 // Jolt - FILE 2: For You page, new posts, comments, profile pages. (with # hashtags and @mentions)
 // Plugs into index.html with ONE line at the bottom:
-// <script type="module" src="profile.js?v=1"></script>
+// <script type="module" src="profile.js?v=2"></script>
 import { getApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, doc, updateDoc, addDoc, deleteDoc, collection, query, where, orderBy, limit, onSnapshot, serverTimestamp, arrayUnion, arrayRemove, increment, deleteField } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -941,6 +941,136 @@ function hookCamera() {
 // ---------- profile pages ----------
 const modes = {};
 let focusId = "";
+
+// ---------- highlights (saved stories on the profile) + share Jolt ----------
+const hcss = document.createElement("style");
+hcss.textContent = `
+.textOnly .jtag{color:#fff;text-decoration:underline;font-weight:700}
+.jhl{display:flex;gap:14px;overflow-x:auto;padding:12px 4px 4px;scrollbar-width:none}
+.jhl::-webkit-scrollbar{display:none}
+.jhlI{flex:none;width:68px;text-align:center;cursor:pointer;color:var(--tx)}
+.jhlR{width:62px;height:62px;border-radius:50%;margin:0 auto;border:2px solid var(--line);padding:3px;box-sizing:border-box}
+.jhlR div{width:100%;height:100%;border-radius:50%;background:var(--inp) center/cover no-repeat;display:flex;align-items:center;justify-content:center;font-size:26px;color:var(--mut)}
+.jhlN{font-size:12px;margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#jhv{position:fixed;inset:0;z-index:10001;background:#000;display:flex;flex-direction:column;color:#fff}
+#jhv.hidden{display:none}
+#jhv .hh{display:flex;align-items:center;gap:8px;padding:12px}
+#jhv .hh b{flex:1;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#jhv .hh button{width:auto;margin:0;padding:8px 12px;font-size:20px;background:none;color:#fff;border:none;border-radius:20px}
+#jhv .hs{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;position:relative}
+#jhv .hs img{max-width:100%;max-height:100%;object-fit:contain}
+#jhv .ht{position:absolute;top:0;bottom:0}
+#jhv .hp{left:0;width:35%}
+#jhv .hn{right:0;width:65%}
+#jhv .hc{padding:12px 18px 26px;text-align:center;font-size:16px;line-height:1.35;min-height:22px;word-break:break-word}
+`;
+document.head.appendChild(hcss);
+
+const MAX_HL = 8;
+const hlOf = p => ((p && p.highlights) || []).filter(h => h && h.img);
+let hlView = null; // { list, i, mine }
+function buildHlViewer() {
+  if ($("jhv")) return;
+  const v = mk("div", "hidden"); v.id = "jhv";
+  v.innerHTML = '<div class="hh"><b id="jhT"></b><button type="button" id="jhD" title="Remove">🗑</button><button type="button" id="jhX" title="Close">✕</button></div><div class="hs"><img id="jhI" alt=""><div class="ht hp" id="jhP"></div><div class="ht hn" id="jhN"></div></div><div class="hc" id="jhC"></div>';
+  document.body.appendChild(v);
+  $("jhX").onclick = closeHl;
+  $("jhP").onclick = () => { if (hlView) { hlView.i = Math.max(0, hlView.i - 1); showHl(); } };
+  $("jhN").onclick = () => { if (hlView) { hlView.i++; showHl(); } };
+  $("jhD").onclick = delHl;
+}
+function showHl() {
+  if (!hlView) return;
+  if (hlView.i >= hlView.list.length) { closeHl(); return; }
+  const h = hlView.list[hlView.i];
+  $("jhI").src = h.img;
+  $("jhT").textContent = h.title || "Highlight";
+  $("jhC").textContent = h.cap || "";
+  $("jhD").style.display = hlView.mine ? "" : "none";
+}
+function openHl(list, i, mine) {
+  buildHlViewer();
+  hlView = { list: list.slice(), i: i, mine: mine };
+  $("jhv").classList.remove("hidden");
+  showHl();
+}
+function closeHl() { hlView = null; const v = $("jhv"); if (v) { v.classList.add("hidden"); $("jhI").removeAttribute("src"); } }
+async function delHl() {
+  if (!hlView || !hlView.mine || !me) return;
+  const h = hlView.list[hlView.i]; if (!h) return;
+  if (!confirm("Remove this highlight?")) return;
+  try {
+    const now = hlOf(myProf()).filter(x => x.id !== h.id);
+    await updateDoc(doc(db, "players", me.uid), { highlights: now });
+    hlView.list.splice(hlView.i, 1);
+    toast("Removed");
+    if (!hlView.list.length) closeHl(); else showHl();
+  } catch (e) { toast("Could not remove it."); }
+}
+// save one picture as a highlight (used by the + button here and the star in stories)
+async function addHighlight(src, title, cap) {
+  if (!me || !myProf()) { toast("Save your profile first."); return false; }
+  const cur = hlOf(myProf());
+  if (cur.length >= MAX_HL) { toast("You can keep " + MAX_HL + " highlights. Remove one first."); return false; }
+  try {
+    const im = await loadImg(src);
+    const small = shrink(im, 640, 60000);
+    const item = { id: "h" + Date.now(), img: small, title: String(title || "").trim().slice(0, 16), cap: String(cap || "").trim().slice(0, 120), at: Date.now() };
+    await updateDoc(doc(db, "players", me.uid), { highlights: cur.concat([item]) });
+    toast("Saved to your highlights");
+    return true;
+  } catch (e) { toast("Could not save the highlight. Try a smaller picture."); return false; }
+}
+window.joltAddHighlight = (src, cap) => addHighlight(src, "", cap);
+function pickHighlight() {
+  let f = $("jHlFile");
+  if (!f) { f = mk("input"); f.type = "file"; f.accept = "image/*"; f.id = "jHlFile"; f.style.display = "none"; document.body.appendChild(f); }
+  f.onchange = async () => {
+    const file = f.files && f.files[0]; f.value = ""; if (!file) return;
+    if (!/^image\//.test(file.type)) { toast("Please choose a picture."); return; }
+    const title = (prompt("Name for this highlight (optional):", "") || "");
+    try { await addHighlight(await readFile(file), title, ""); } catch (e) { toast("That picture could not be opened."); }
+  };
+  f.click();
+}
+function hlRow(p, isMe) {
+  const list = hlOf(p);
+  if (!list.length && !isMe) return null;
+  const row = mk("div", "jhl");
+  list.forEach((h, i) => {
+    const it = mk("div", "jhlI");
+    const r = mk("div", "jhlR"); const d = mk("div"); d.style.backgroundImage = "url(" + h.img + ")"; r.appendChild(d);
+    it.appendChild(r); it.appendChild(mk("div", "jhlN", h.title || "Highlight"));
+    it.onclick = () => openHl(list, i, isMe);
+    row.appendChild(it);
+  });
+  if (isMe) {
+    const it = mk("div", "jhlI");
+    const r = mk("div", "jhlR"); r.appendChild(mk("div", "", "+"));
+    it.appendChild(r); it.appendChild(mk("div", "jhlN", "New"));
+    it.onclick = pickHighlight;
+    row.appendChild(it);
+  }
+  return row;
+}
+// "Share Jolt" in the menu
+function shareJolt() {
+  const url = "https://nwokoleme.github.io/game-hub/";
+  const text = "Join me on Jolt!";
+  if (navigator.share) { navigator.share({ title: "Jolt", text: text, url: url }).catch(() => {}); return; }
+  try { navigator.clipboard.writeText(url); toast("Link copied. Send it to your friends."); }
+  catch (e) { prompt("Copy this link:", url); }
+}
+function addShareBtn() {
+  if ($("mShareJolt")) return;
+  const mi = $("mInstall"); if (!mi || !mi.parentNode) return;
+  const b = document.createElement("button");
+  b.id = "mShareJolt"; b.type = "button"; b.className = mi.className.replace("hidden", "").trim();
+  b.textContent = "📤 Share Jolt";
+  b.onclick = () => { const m = $("menuModal"); if (m) m.classList.add("hidden"); shareJolt(); };
+  mi.parentNode.insertBefore(b, mi);
+}
+
 function stat(n, label) { const d = mk("div"); d.appendChild(mk("b", "", String(n))); d.appendChild(mk("span", "", label)); return d; }
 function tile(x) {
   const imgs = imgsOf(x);
@@ -969,6 +1099,7 @@ function buildProfile(box, p, isMe, actsNode) {
     mb.onclick = () => {
       const m = $("menuModal"); if (!m) return;
       const mi = $("mInstall"), mo = $("mOwner");
+      addShareBtn();
       if (mi && $("installBtn")) mi.classList.toggle("hidden", $("installBtn").classList.contains("hidden"));
       if (mo && $("ownerInboxBtn")) mo.classList.toggle("hidden", $("ownerInboxBtn").classList.contains("hidden"));
       if ($("mHelpBox")) $("mHelpBox").classList.add("hidden");
@@ -1014,6 +1145,7 @@ function buildProfile(box, p, isMe, actsNode) {
   if (p.gameUid) body.appendChild(mk("div", "profId", "🎮 ID: " + p.gameUid));
   wrap.appendChild(body);
 
+  try { const hr = hlRow(p, isMe); if (hr) body.appendChild(hr); } catch (e) {}
   const key = isMe ? "me" : "user";
   const mode = modes[key] || "grid";
   const tabs = mk("div", "profTabs");

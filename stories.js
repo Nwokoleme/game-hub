@@ -1,7 +1,7 @@
 // Jolt - FILE 3: Stories (picture stories that last 24 hours).
 // Seen by the people who follow you and your friends.
 // Plugs into index.html with ONE line at the bottom:
-// <script type="module" src="stories.js?v=2"></script>
+// <script type="module" src="stories.js?v=3"></script>
 // NEW: story replies (text) and emoji reactions.
 import { getApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -177,7 +177,7 @@ const canRun = () => !typing && !holding && !listOpen();
 function buildViewer() {
   const v = mk("div"); v.id = "jsv"; v.className = "hidden";
   v.innerHTML = '<div id="jsBars"></div>'
-    + '<div id="jsHd"><div class="jsAv" id="jsAv"></div><div class="nm"><b id="jsNm"></b><span id="jsTm"></span></div><button type="button" class="jsBtn" id="jsDel" title="Delete">🗑</button><button type="button" class="jsBtn" id="jsX" title="Close">✕</button></div>'
+    + '<div id="jsHd"><div class="jsAv" id="jsAv"></div><div class="nm"><b id="jsNm"></b><span id="jsTm"></span></div><button type="button" class="jsBtn" id="jsHl" title="Save to highlights">⭐</button><button type="button" class="jsBtn" id="jsDel" title="Delete">🗑</button><button type="button" class="jsBtn" id="jsX" title="Close">✕</button></div>'
     + '<div id="jsStage"><img id="jsImg" alt=""><div class="jsTap" id="jsPrev"></div><div class="jsTap" id="jsNext"></div></div>'
     + '<div id="jsCap"></div>'
     + '<div id="jsFoot"><span id="jsFt"></span><button type="button" id="jsRb"></button></div>'
@@ -186,6 +186,14 @@ function buildViewer() {
   document.body.appendChild(v);
   $("jsX").onclick = closeViewer;
   $("jsDel").onclick = delCurrent;
+  $("jsHl").onclick = async () => {
+    if (!V) return;
+    const s = V.list[V.i]; if (!s || s.uid !== me.uid) return;
+    if (!window.joltAddHighlight) { toast("Update profile.js first."); return; }
+    pause();
+    await window.joltAddHighlight(s.img, s.caption || "");
+    resume();
+  };
   const st = $("jsStage");
   st.addEventListener("pointerdown", () => { held = false; clearTimeout(holdT); holdT = setTimeout(() => { held = true; holding = true; pause(); }, 250); });
   const up = () => { clearTimeout(holdT); if (holding) { holding = false; resume(); } };
@@ -257,6 +265,7 @@ function showStory() {
   $("jsCap").textContent = s.caption || "";
   const mine = s.uid === me.uid;
   $("jsDel").style.display = mine ? "" : "none";
+  $("jsHl").style.display = mine ? "" : "none";
   $("jsRep").style.display = mine ? "none" : "";
   $("jsRb").style.display = mine ? "" : "none";
   $("jsRl").classList.add("hidden");
