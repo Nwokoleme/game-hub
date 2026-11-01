@@ -144,7 +144,15 @@ css.textContent = `
 #jcmBar input{flex:1;margin:0}
 #jcmBar button.send{width:auto;margin:0}
 `;
+css.textContent += `
+html,body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+input,textarea,[contenteditable="true"]{-webkit-user-select:text;user-select:text}
+img{-webkit-user-drag:none;-webkit-touch-callout:none}
+`;
 document.head.appendChild(css);
+// no copy / search menu when you press and hold (typing boxes still work)
+document.addEventListener("contextmenu", e => { if (!(e.target.closest && e.target.closest("input,textarea"))) e.preventDefault(); });
+document.addEventListener("selectstart", e => { if (!(e.target.closest && e.target.closest("input,textarea"))) e.preventDefault(); });
 
 // ---------- music (auto play on a post) ----------
 let cur = null; // { id, audio }
@@ -692,8 +700,13 @@ function openUser(uid) {
 }
 
 // ---------- start ----------
+function ownerOnlyStrip() {
+  const st = $("strip"); const card = st && st.closest(".card");
+  if (card) card.style.display = isOwner() ? "" : "none";
+}
 function renderAll() {
   if (!me) return;
+  try { ownerOnlyStrip(); } catch (e) {}
   try { renderFYP(); } catch (e) { console.error(e); }
   try { renderMe(); } catch (e) { console.error(e); }
   try { renderUserView(); } catch (e) { console.error(e); }
