@@ -282,6 +282,7 @@ function postCard(p, opt) {
     const v = document.createElement("video");
     v.src = vidSrc(p.video); v.controls = true; v.playsInline = true; v.loop = true; v.preload = "metadata";
     v.onerror = () => { if (v.dataset.fb !== "1") { v.dataset.fb = "1"; v.src = p.video; } };
+    v.ontimeupdate = () => { if (v.currentTime >= 30) { v.currentTime = 0; } };
     if (p.vthumb) v.poster = p.vthumb;
     v.onplay = () => { document.querySelectorAll(".jvid video").forEach(o => { if (o !== v) o.pause(); }); };
     vw.appendChild(v); body.appendChild(vw);
@@ -543,7 +544,7 @@ function buildComposer() {
     + '<div id="jColors" class="jcolors"></div><div id="jPrev" class="jprev"></div><div id="jThumbs" class="jthumbs"></div>'
     + '<input id="jFiles" type="file" accept="image/*" multiple class="hidden">'
     + '<div class="jrow"><button id="jAdd" class="ghost" type="button">📷 Add pictures</button><button id="jCam" class="ghost" type="button">🤳 Take photo</button></div>'
-    + '<div class="jrow"><button id="jVid" class="ghost" type="button">🎬 Add video (12s)</button><button id="jRec" class="ghost" type="button">🎥 Record video</button></div>'
+    + '<div class="jrow"><button id="jVid" class="ghost" type="button">🎬 Add video (30s)</button><button id="jRec" class="ghost" type="button">🎥 Record video</button></div>'
     + '<input id="jVidFile" type="file" accept="video/*" class="hidden"><input id="jRecFile" type="file" accept="video/*" capture="environment" class="hidden"><div id="jVidPrev"></div>'
     + '<div class="jrow"><select id="jMusic"></select><button id="jListen" class="ghost" type="button">▶ Listen</button></div>'
     + '<div class="jrow"><select id="jCat"><option value="gaming">🎮 Gaming</option><option value="lifestyle">🌍 Lifestyle</option><option value="fun">😂 Fun</option></select></div>'
@@ -585,7 +586,7 @@ function buildComposer() {
   drawComposer();
 }
 
-// ---------- 12-second videos ----------
+// ---------- 30-second videos ----------
 async function pickVideo(e) {
   const f = e.target.files[0]; e.target.value = "";
   if (!f || vidBusy) return;
@@ -609,7 +610,7 @@ const CLOUD_PRESET = "jolt_videos";
 function vidSrc(u) {
   u = String(u || "");
   if (u.indexOf("https://res.cloudinary.com/") === 0 && u.indexOf("/video/upload/") > -1 && u.indexOf("q_auto") === -1) {
-    return u.replace("/video/upload/", "/video/upload/f_mp4,vc_h264,q_auto,w_720,c_limit/");
+    return u.replace("/video/upload/", "/video/upload/du_30,f_mp4,vc_h264,q_auto,w_720,c_limit/");
   }
   return u;
 }
@@ -623,7 +624,7 @@ function videoThumb(file) {
     v.onerror = () => end("");
     v.onloadedmetadata = () => {
       const dur = v.duration;
-      if (isFinite(dur) && dur > 12.5) { fin = true; try { URL.revokeObjectURL(url); } catch (x) {} return reject(new Error("Video: please pick a clip of 12 seconds or less.")); }
+      if (isFinite(dur) && dur > 121) { fin = true; try { URL.revokeObjectURL(url); } catch (x) {} return reject(new Error("Video: please pick a clip of 2 minutes or less. Jolt keeps the first 30 seconds.")); }
       try { v.currentTime = Math.min(0.4, (isFinite(dur) && dur > 0 ? dur : 1) / 3); } catch (x) { end(""); }
     };
     v.onseeked = () => {
@@ -639,7 +640,7 @@ function videoThumb(file) {
   });
 }
 async function uploadVideo(file, progress) {
-  if (file.size > 40 * 1024 * 1024) throw new Error("Video: this clip is too big. Record a shorter one or use lower quality.");
+  if (file.size > 60 * 1024 * 1024) throw new Error("Video: this clip is too big. Record a shorter one or use lower quality.");
   progress("checking");
   const thumb = await videoThumb(file);
   const data = await new Promise((resolve, reject) => {
@@ -739,7 +740,7 @@ function drawComposer() {
   if (vp) {
     vp.innerHTML = "";
     if (cVideo) {
-      const pv = document.createElement("video"); pv.src = cVideo.data; pv.controls = true; pv.playsInline = true; pv.muted = true;
+      const pv = document.createElement("video"); pv.src = cVideo.data; pv.controls = true; pv.playsInline = true; pv.muted = true; pv.ontimeupdate = () => { if (pv.currentTime >= 30) { pv.currentTime = 0; } };
       vp.appendChild(pv);
       const x = mk("button", "ghost jvx", "✕ Remove video"); x.type = "button"; x.onclick = () => { cVideo = null; drawComposer(); };
       vp.appendChild(x);
