@@ -163,7 +163,7 @@ const STICKERS = [
     el.textContent = t; el.classList.add("on");
     clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove("on"), 2600);
   }
-  const isOn = p => !!p && !!p.lastSeen && (Date.now() - p.lastSeen) < ONLINE_MS;
+  const isOn = p => !!p && !!p.lastSeen && !p.privHideOnline && (Date.now() - p.lastSeen) < ONLINE_MS;
   const pOf = uid => players.find(x => x.uid === uid);
   const nameOf = uid => { const p = pOf(uid); return p ? (p.gameName || "Player") : "Player"; };
   const myName = () => (myP && myP.gameName) || "Player";
@@ -390,6 +390,9 @@ const STICKERS = [
     box.appendChild(c);
   }
 
+  // privacy: people with "friends-only messages" can only be added to groups by their friends
+  const isFriendUid = uid => Object.keys(reqs).some(id => reqs[id].status === "accepted" && (reqs[id].participants || []).includes(uid));
+
   // ---------- new group ----------
   function openNewGroup() {
     if (!myP) { alert("Save your name first (Me tab)."); return; }
@@ -402,7 +405,7 @@ const STICKERS = [
       const keep = new Set(Array.from(gl.querySelectorAll("input:checked")).map(i => i.value));
       const term = se.value.trim().toLowerCase();
       gl.innerHTML = "";
-      players.filter(p => p.uid !== me.uid && (!term || String(p.gameName || "").toLowerCase().includes(term))).forEach(p => {
+      players.filter(p => p.uid !== me.uid && !(p.privFriendsOnly && !isFriendUid(p.uid)) && (!term || String(p.gameName || "").toLowerCase().includes(term))).forEach(p => {
         const l = mk("label", "gp");
         const c = document.createElement("input"); c.type = "checkbox"; c.value = p.uid; c.checked = keep.has(p.uid);
         l.appendChild(c); l.appendChild(mk("span", "", p.gameName || "Player"));

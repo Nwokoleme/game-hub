@@ -30,7 +30,14 @@ const isOwner = () => !!(me && me.email && me.email.toLowerCase() === OWNER_EMAI
 const myProf = () => players.find(p => me && p.uid === me.uid);
 const myName = () => { const p = myProf(); return p ? p.gameName : (isOwner() ? "Jeffrey Nwokoleme" : "Player"); };
 const followingOf = p => (p && p.following) || [];
-const isOnline = p => !!(p && p.lastSeen && Date.now() - p.lastSeen < 150000);
+// ---- privacy: who may see whose posts ----
+const friendSet = () => { const s = new Set(); if (!me) return s; reqs.forEach(r => { if (r.status === "accepted") { const o = (r.participants || []).find(u => u !== me.uid); if (o) s.add(o); } }); return s; };
+function postsHidden(uid) {
+  if (!me || uid === me.uid || uid === ownerUid || isOwner()) return false;
+  const p = players.find(x => x.uid === uid);
+  return !!(p && p.privPrivate && !friendSet().has(uid));
+}
+const isOnline = p => !!(p && p.lastSeen && !p.privHideOnline && Date.now() - p.lastSeen < 150000);
 const imgsOf = p => (p.imgs && p.imgs.length) ? p.imgs : (p.img && String(p.img).startsWith("data:image/") ? [p.img] : []);
 const msOf = p => (p.time && p.time.toMillis) ? p.time.toMillis() : 0;
 const timeText = p => { try { return p.time ? p.time.toDate().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "just now"; } catch (e) { return ""; } };
@@ -361,7 +368,7 @@ function renderFYP() {
   });
   box.appendChild(bar);
   const ok = circle();
-  const list = posts.filter(p => p.uid !== me.uid && (ok.has(p.uid) || p.uid === ownerUid) && (feedCat === "all" || (p.category || "gaming") === feedCat));
+  const list = posts.filter(p => p.uid !== me.uid && !postsHidden(p.uid) && (ok.has(p.uid) || p.uid === ownerUid) && (feedCat === "all" || (p.category || "gaming") === feedCat));
   if (!list.length) { box.appendChild(mk("div", "card mut", "Nothing here yet. Follow people, or search a name and add friends, to fill your For You page.")); checkCur(); return; }
   const shownList = list.slice(0, feedN);
   shownList.forEach(p => box.appendChild(postCard(p)));
@@ -646,6 +653,7 @@ function buildProfile(box, p, isMe, actsNode) {
   wrap.appendChild(tabs);
   box.appendChild(wrap);
 
+  if (!isMe && !isOwner() && p.uid !== ownerUid && (postsHidden(p.uid) || p.privHidePosts)) { box.appendChild(mk("div", "profEmpty", "🔒 This person's posts are private.")); return; }
   const pins = p.pins || [];
   const mineAll = posts.filter(x => x.uid === p.uid);
   const pinned = pins.map(id => mineAll.find(x => x.id === id)).filter(Boolean);
@@ -714,6 +722,54 @@ window.joltOpenPost = function (id) {
   if (p) openComments(p); else toast("This post is no longer available.");
 };
 
+// ---------- privacy settings (opens from the menu) ----------
+const PRIV = [
+  ["privPrivate", "🔒 Private account", "Only your friends can see your posts. Other people will not see them on For You or on your page."],
+  ["privHidePosts", "🙈 Hide posts on my page", "Nobody can see the posts on your profile page."],
+  ["privHideOnline", "🕶 Hide online dot", "Other people see you as offline, even when you are using Jolt."],
+  ["privFriendsOnly", "💬 Friends-only messages", "Only your friends can add you to a group."]
+];
+function drawPrivacy() {
+  const box = $("pvList"); if (!box) return;
+  box.innerHTML = "";
+  const mp = myProf() || {};
+  PRIV.forEach(o => {
+    const on = !!mp[o[0]];
+    const row = mk("div", "pvRow");
+    const t = mk("div", "pvT"); t.appendChild(mk("b", "", o[1])); t.appendChild(mk("span", "", o[2]));
+    const b = mk("button", "pvBtn" + (on ? " on" : ""), on ? "On" : "Off"); b.type = "button";
+    b.onclick = async () => {
+      if (!myProf()) { toast("Save your name first."); return; }
+      b.disabled = true;
+      try {
+        const data = { [o[0]]: !on };
+        if (o[0] === "privHideOnline" && !on) data.lastSeen = 0;
+        await updateDoc(doc(db, "players", me.uid), data);
+      } catch (e) { toast("Could not change this. Try again."); }
+      b.disabled = false;
+    };
+    row.appendChild(t); row.appendChild(b);
+    box.appendChild(row);
+  });
+}
+function buildPrivacy() {
+  const st = document.createElement("style");
+  st.textContent = "#pvModal{position:fixed;inset:0;z-index:75;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center}#pvModal.hidden{display:none}#pvModal .sheet{width:100%;max-width:520px;max-height:88vh;overflow-y:auto;background:var(--card,#141414);color:var(--tx,#fff);border-radius:22px 22px 0 0;padding:16px 16px 26px}#pvModal .pvHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}#pvModal .pvHead b{font-size:18px}#pvModal .pvX{width:38px;height:38px;border-radius:50%;border:0;background:var(--inp,#2a2a2a);color:var(--tx,#fff);font-size:18px;padding:0;margin:0}.pvRow{display:flex;align-items:center;gap:12px;padding:14px 0;border-top:1px solid var(--line,#2a2a2a)}.pvT{flex:1;min-width:0}.pvT b{display:block;font-size:16px}.pvT span{display:block;font-size:13px;opacity:.7;margin-top:3px;line-height:1.35}.pvBtn{width:64px;margin:0;padding:9px 0;border-radius:20px;border:1px solid var(--line,#444);background:var(--inp,#222);color:var(--tx,#fff);font-weight:700;font-size:14px}.pvBtn.on{background:#00ba7c;border-color:#00ba7c;color:#fff}";
+  document.head.appendChild(st);
+  const m = mk("div", "hidden"); m.id = "pvModal";
+  m.innerHTML = '<div class="sheet"><div class="pvHead"><b>🔒 Privacy</b><button class="pvX" id="pvClose" type="button">✕</button></div><div id="pvList"></div></div>';
+  document.body.appendChild(m);
+  m.onclick = e => { if (e.target === m) m.classList.add("hidden"); };
+  $("pvClose").onclick = () => m.classList.add("hidden");
+  const sheet = document.querySelector("#menuModal .sheet");
+  const out = $("mLogout");
+  if (sheet && out) {
+    const bt = mk("button", "mItem", "🔒 Privacy"); bt.type = "button"; bt.id = "mPrivacy";
+    bt.onclick = () => { const mm = $("menuModal"); if (mm) mm.classList.add("hidden"); drawPrivacy(); m.classList.remove("hidden"); };
+    sheet.insertBefore(bt, out);
+  }
+}
+
 // ---------- start ----------
 function ownerOnlyStrip() {
   const st = $("strip"); const card = st && st.closest(".card");
@@ -723,6 +779,7 @@ function ownerOnlyStrip() {
 }
 function renderAll() {
   if (!me) return;
+  try { const pm = $("pvModal"); if (pm && !pm.classList.contains("hidden")) drawPrivacy(); } catch (e) {}
   try { ownerOnlyStrip(); } catch (e) {}
   try { renderFYP(); } catch (e) { console.error(e); }
   try { renderMe(); } catch (e) { console.error(e); }
@@ -747,6 +804,7 @@ function prepare() {
   $("userBox").parentNode.insertBefore(ju, $("userBox").nextSibling);
   new MutationObserver(adoptUser).observe($("userBox"), { childList: true });
   buildCommentSheet();
+  buildPrivacy();
   hookCamera();
   // stop music when leaving For You is handled by the observer (hidden = not visible)
 }
