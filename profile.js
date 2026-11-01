@@ -17,10 +17,11 @@ const COLORS = ["#1d9bf0", "#a855f7", "#ec4899", "#ef4444", "#f59e0b", "#10b981"
 const REACTS = ["😂", "🔥", "😮", "😢", "👏"];
 const svg = d => '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + d + "</svg>";
 const ICON_HEART = svg('<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/>');
+const ICON_SEND = svg('<path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/>');
 const ICON_CMT = svg('<path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.6-.8L3 21l1.9-5.3A8.4 8.4 0 1 1 21 11.5z"/>');
 
 let me = null, players = [], posts = [], reqs = [], ownerUid = "";
-let unsubs = [], feedCat = "all", tm = null;
+let unsubs = [], feedCat = "all", tm = null, feedN = 10;
 let muted = false;
 try { muted = localStorage.getItem("jmute") === "1"; } catch (e) {}
 
@@ -84,6 +85,7 @@ function readFile(f) { return new Promise((res, rej) => { const r = new FileRead
 // ---------- styles ----------
 const css = document.createElement("style");
 css.textContent = `
+.jflash{outline:2px solid #1d9bf0;outline-offset:2px;border-radius:12px}
 #jToast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%) translateY(20px);background:#222;color:#fff;padding:10px 16px;border-radius:20px;font-size:14px;opacity:0;pointer-events:none;transition:.25s;z-index:99999;max-width:86%;text-align:center}
 #jToast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 .jcat{display:flex;gap:8px;overflow-x:auto;padding:4px 0 10px}
@@ -226,6 +228,7 @@ function postCard(p, opt) {
   const likes = p.likes || [], fires = p.fires || [];
   const l = likes.includes(me.uid), f = fires.includes(me.uid);
   const c = mk("div", "post");
+  c.dataset.pid = p.id;
   const mp = myProf();
   const pinned = mp && (mp.pins || []).includes(p.id);
 
@@ -255,7 +258,7 @@ function postCard(p, opt) {
   let carEl = null;
   if (imgs.length) {
     const car = mk("div", "jcar"); carEl = car;
-    imgs.forEach(s => { const im = mk("img"); im.src = s; im.draggable = false; car.appendChild(im); });
+    imgs.forEach(s => { const im = mk("img"); im.src = s; im.draggable = false; im.loading = "lazy"; im.decoding = "async"; car.appendChild(im); });
     body.appendChild(car);
     const sv = mk("button", "jsave", "⬇"); sv.type = "button"; sv.title = "Save picture";
     sv.onclick = e => { e.stopPropagation(); const i = Math.round(car.scrollLeft / Math.max(1, car.clientWidth)); saveImage(imgs[Math.min(i, imgs.length - 1)]); };
@@ -306,7 +309,9 @@ function postCard(p, opt) {
   const hb = mk("button", "ibtn" + (l ? " liked" : "")); hb.type = "button"; hb.innerHTML = ICON_HEART; hb.onclick = e => { e.stopPropagation(); react(p, "likes", l); };
   const cb = mk("button", "ibtn"); cb.type = "button"; cb.innerHTML = ICON_CMT; cb.onclick = e => { e.stopPropagation(); openComments(p); };
   const fb = mk("button", "ibtn fireBtn" + (f ? " on" : ""), "🔥"); fb.type = "button"; fb.onclick = e => { e.stopPropagation(); react(p, "fires", f); };
-  acts.appendChild(hb); acts.appendChild(cb); acts.appendChild(fb);
+  const sb = mk("button", "ibtn"); sb.type = "button"; sb.title = "Send to a friend"; sb.innerHTML = ICON_SEND;
+  sb.onclick = e => { e.stopPropagation(); if (window.joltSharePost) window.joltSharePost({ id: p.id, uid: p.uid, name: p.name, text: p.text || "", img: imgs[0] || "" }); else toast("Chat is still loading. Try again in a moment."); };
+  acts.appendChild(hb); acts.appendChild(cb); acts.appendChild(fb); acts.appendChild(sb);
   c.appendChild(acts);
   if (likes.length || fires.length) {
     const parts = [];
@@ -358,7 +363,9 @@ function renderFYP() {
   const ok = circle();
   const list = posts.filter(p => p.uid !== me.uid && (ok.has(p.uid) || p.uid === ownerUid) && (feedCat === "all" || (p.category || "gaming") === feedCat));
   if (!list.length) { box.appendChild(mk("div", "card mut", "Nothing here yet. Follow people, or search a name and add friends, to fill your For You page.")); checkCur(); return; }
-  list.forEach(p => box.appendChild(postCard(p)));
+  const shownList = list.slice(0, feedN);
+  shownList.forEach(p => box.appendChild(postCard(p)));
+  if (list.length > shownList.length) { const mb = mk("button", "ghost", "Show more posts"); mb.type = "button"; mb.onclick = () => { feedN += 10; renderFYP(); }; box.appendChild(mb); }
   checkCur();
 }
 
@@ -699,6 +706,14 @@ function openUser(uid) {
   }, 60);
 }
 
+// open a shared post from a chat
+window.joltOpenPost = function (id) {
+  const el = document.querySelector('[data-pid="' + id + '"]');
+  if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.classList.add("jflash"); setTimeout(() => el.classList.remove("jflash"), 2200); return; }
+  const p = posts.find(x => x.id === id);
+  if (p) openComments(p); else toast("This post is no longer available.");
+};
+
 // ---------- start ----------
 function ownerOnlyStrip() {
   const st = $("strip"); const card = st && st.closest(".card");
@@ -741,7 +756,7 @@ onAuthStateChanged(auth, user => {
   if (!me) return;
   prepare();
   unsubs.push(onSnapshot(collection(db, "players"), snap => { players = snap.docs.map(d => ({ uid: d.id, ...d.data() })); schedule(); }, () => {}));
-  unsubs.push(onSnapshot(query(collection(db, "posts"), orderBy("time", "desc"), limit(120)), snap => { posts = snap.docs.map(d => ({ id: d.id, ...d.data() })); schedule(); }, () => {}));
+  unsubs.push(onSnapshot(query(collection(db, "posts"), orderBy("time", "desc"), limit(60)), snap => { posts = snap.docs.map(d => ({ id: d.id, ...d.data() })); schedule(); }, () => {}));
   unsubs.push(onSnapshot(query(collection(db, "requests"), where("participants", "array-contains", me.uid)), snap => { reqs = snap.docs.map(d => ({ id: d.id, ...d.data() })); schedule(); }, () => {}));
   unsubs.push(onSnapshot(doc(db, "config", "owner"), d => { const v = d.data(); ownerUid = (v && v.uid) || ""; schedule(); }, () => {}));
 });

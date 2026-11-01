@@ -1,17 +1,26 @@
-/* Jolt File 1: chat.js
-   New chat hub for the Friends tab. Loads after index.html, uses the same Firebase app.
-   Features: one chat list (friends + groups), Jux inside chats, blue/red online dots,
-   two blue ticks, streaks, requests button, WhatsApp-style groups with name + picture,
-   disappearing messages (24h), read receipts switch. */
+/* Jolt File 1: chat.js (version 2)
+   Chat hub for the Friends tab. Loads after index.html, uses the same Firebase app.
+   Chats: friends + groups, Jux inside chats, blue/red online dots, two blue ticks, streaks,
+   requests, groups with name, disappearing messages (24h), read receipts switch.
+   New in v2: emoji, stickers (built-in + your own pictures), photos, voice notes,
+   message reactions, copy, delete, share a post to a chat, block and report. */
 import { getApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, updateDoc, addDoc, deleteDoc, collection, query, where, orderBy, limit, onSnapshot, serverTimestamp, arrayRemove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, updateDoc, addDoc, deleteDoc, collection, query, where, orderBy, limit, onSnapshot, serverTimestamp, arrayRemove, arrayUnion, deleteField } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 function ready() {
   return new Promise(res => {
     const t = setInterval(() => { if (getApps().length) { clearInterval(t); res(); } }, 100);
   });
 }
+
+const EMOJIS = Array.from("😀😃😄😁😆😅😂🤣😊😇🙂😉😍🥰😘😋😎🤩🥳😏😒😞😔😢😭😤😡🤬🤯😱😨😰🥶🥵🤔🤫🤭🙄😴🤮🤧😷🤝👍👎👏🙌🙏💪👊✌️🤞👌🫡👀🧠💀👻🤖👽🔥💥✨⭐🌟💯❤️🧡💛💚💙💜🖤💔🏆🥇🎮🕹️🔫💣🎯🎧🎵🎉🎊🎁🍕🍔🍟🍗🍺🥤⚽🏀🚀💎👑");
+const STICKERS = [
+  ["🏆", "EZ WIN"], ["🔥", "BOOYAH!"], ["😎", "CLUTCH"], ["💀", "I'M DEAD"],
+  ["😂", "NOOB 😂"], ["🤝", "RESPECT"], ["🎯", "HEADSHOT"], ["👑", "KING"],
+  ["💪", "LET'S GO"], ["😭", "SO CLOSE"], ["🤣", "LOL"], ["👏", "WELL PLAYED"],
+  ["🎮", "GG"], ["🥳", "WE WON"], ["😡", "RAGE"], ["❤️", "LOVE IT"]
+];
 
 (async function () {
   await ready();
@@ -20,9 +29,12 @@ function ready() {
   const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
 
   const ONLINE_MS = 150000;
+  const REACT_SET = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
+  const REPORT_WHY = ["Spam", "Bullying or abuse", "Nudity or sexual content", "Scam or fraud", "Something else"];
   let me = null, myP = null, players = [], reqs = {}, groups = [];
   let unsubs = [], lastUnsubs = {}, lastMsgs = {};
   let cx = null; // open chat
+  let panelMode = "";
 
   // ---------- styles ----------
   const css = document.createElement("style");
@@ -56,23 +68,54 @@ function ready() {
 #cxLog{flex:1;min-height:0;overflow-y:auto;padding:12px 10px;background:var(--wp-bg,var(--chat-bg))}
 .cxMsg{display:flex;gap:8px;margin:6px 0;align-items:flex-end}
 .cxMsg.mine{justify-content:flex-end}
-.cxB{max-width:78%;padding:7px 11px 5px;border-radius:12px 12px 12px 3px;background:var(--in-bg);color:var(--tx);box-shadow:0 1px 1px rgba(0,0,0,.25);font-size:15.5px;line-height:1.35;word-wrap:break-word;overflow-wrap:anywhere;white-space:pre-wrap;-webkit-user-select:text;user-select:text}
+.cxB{max-width:78%;padding:7px 11px 5px;border-radius:12px 12px 12px 3px;background:var(--in-bg);color:var(--tx);box-shadow:0 1px 1px rgba(0,0,0,.25);font-size:15.5px;line-height:1.35;word-wrap:break-word;overflow-wrap:anywhere;white-space:pre-wrap;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .cxMsg.mine .cxB{background:var(--me-bg);color:var(--me-tx);border-radius:12px 12px 3px 12px}
+.cxB.bare{background:none!important;box-shadow:none;padding:2px}
 .cxN{font-size:12px;font-weight:700;color:var(--ac);margin-bottom:2px}
 .cxM{font-size:10.5px;opacity:.7;text-align:right;margin-top:2px;white-space:nowrap}
+.cxB.bare .cxM{color:var(--tx)}
 .tick{margin-left:4px;font-weight:700}
 .tick.blue{color:#1d9bf0;opacity:1}
 .cxB audio{display:block;width:200px;max-width:100%;height:36px}
 .cxNote{text-align:center;color:var(--mut);font-size:12px;margin:8px 0}
-#cx .cxBar{display:flex;gap:8px;align-items:center;padding:8px 10px calc(8px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:var(--bg)}
+.cxNote.day{display:table;margin:10px auto;background:rgba(0,0,0,.35);color:#fff;padding:3px 11px;border-radius:10px}
+.cxImg{display:block;max-width:240px;width:100%;border-radius:8px;cursor:pointer}
+.cxStk{display:block;width:130px;height:130px;object-fit:contain}
+.cxPost{border-left:3px solid var(--ac);padding-left:8px;cursor:pointer;min-width:150px;max-width:230px;white-space:normal}
+.cxPost img{display:block;width:100%;border-radius:8px;margin:4px 0}
+.cxPost small{display:block;opacity:.75;margin-top:3px}
+.cxR{display:inline-block;margin-top:3px;padding:1px 8px;border-radius:12px;background:rgba(0,0,0,.28);font-size:13px}
+#cx .cxBar{display:flex;gap:6px;align-items:center;padding:8px 8px calc(8px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:var(--bg)}
 #cx .cxBar input{flex:1;margin:0;border-radius:22px;padding:11px 16px;min-width:0}
-#cx .cxBar button{width:46px;height:46px;padding:0;margin:0;border-radius:50%;font-size:19px;display:flex;align-items:center;justify-content:center;background:var(--btn);color:#fff;border:none}
+#cx .cxBar button{width:44px;height:44px;padding:0;margin:0;border-radius:50%;font-size:19px;display:flex;align-items:center;justify-content:center;background:var(--btn);color:#fff;border:none;flex:none}
+#cx .cxBar #cxEmo,#cx .cxBar #cxAtt{background:transparent;color:var(--tx);font-size:22px;width:38px}
+#cx .cxBar #cxRecX{background:#f4212e}
+#cx .cxBar #cxMic.recOn{width:auto;padding:0 14px;border-radius:22px;background:#f4212e;font-size:15px}
+#cx .hidden{display:none!important}
+#cxPanel{max-height:250px;overflow-y:auto;border-top:1px solid var(--line);background:var(--bg);padding:6px}
+#cxPanel .pnTabs{display:flex;gap:6px;margin-bottom:6px;position:sticky;top:-6px;background:var(--bg);padding:4px 0}
+#cxPanel .pnTabs button{width:auto;margin:0;padding:6px 12px;font-size:14px;background:var(--inp);color:var(--tx);border:none;border-radius:16px}
+#cxPanel .pnTabs button.on{background:var(--ac);color:#fff}
+.pnGrid{display:flex;flex-wrap:wrap}
+.pnEm{width:12.5%;text-align:center;font-size:26px;padding:6px 0;cursor:pointer}
+.pnStk{width:25%;text-align:center;padding:6px 2px;cursor:pointer}
+.pnStk .a{font-size:38px}.pnStk .b{font-size:10px;color:var(--mut)}
+.pnMy{width:25%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:30px;color:var(--mut)}
+.pnMy img{max-width:92%;max-height:92%}
+#cxLock{padding:14px;text-align:center;color:var(--mut);border-top:1px solid var(--line);font-size:14px}
+#cxLock button{width:auto;display:inline-block;margin:8px 0 0;padding:9px 18px;font-size:14px}
+#cxImgV{position:fixed;inset:0;z-index:60;background:#000;display:flex;align-items:center;justify-content:center}
+#cxImgV img{max-width:100%;max-height:100%}
+#cxImgV.hidden{display:none}
 #chSheet{position:fixed;inset:0;z-index:45;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center}
 #chSheet.hidden{display:none}
 #chSheet .box{width:100%;max-width:560px;max-height:86vh;overflow-y:auto;background:var(--card);color:var(--tx);border-radius:22px 22px 0 0;padding:16px 16px 26px}
 #chSheet h3{margin:0 0 10px;font-size:19px}
 #chSheet .opt{display:block;width:100%;text-align:left;margin:6px 0;padding:14px;border-radius:14px;border:none;background:var(--inp);color:var(--tx);font-size:16px}
 #chSheet .opt.red{color:#ff6b6b}
+#chSheet .rxRow{display:flex;justify-content:space-around;margin:4px 0 10px}
+#chSheet .rxE{font-size:30px;padding:6px 8px;border-radius:50%;cursor:pointer}
+#chSheet .rxE.on{background:var(--inp)}
 #chSheet .rq{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
 #chSheet .rq .chMid{flex:1}
 #chSheet .rq button{width:auto;margin:0;padding:8px 14px;font-size:14px}
@@ -90,7 +133,8 @@ function ready() {
 
   const cxEl = mk("div", "hidden"); cxEl.id = "cx";
   cxEl.innerHTML = '<div class="cxHead"><button id="cxBack" type="button" aria-label="Back">←</button><div id="cxAv"></div><div class="cxT"><b id="cxTitle"></b><span id="cxSub"></span></div><button id="cxMenu" type="button" aria-label="Options">⋯</button></div>' +
-    '<div id="cxLog"></div><div class="cxBar"><input id="cxInput" placeholder="Type a message" maxlength="500" autocomplete="off"><button id="cxSend" type="button" aria-label="Send">➤</button></div>';
+    '<div id="cxLog"></div><div id="cxLock" class="hidden"></div><div id="cxPanel" class="hidden"></div>' +
+    '<div class="cxBar"><button id="cxEmo" type="button" aria-label="Emoji and stickers">😊</button><input id="cxInput" placeholder="Type a message" maxlength="500" autocomplete="off"><button id="cxAtt" type="button" aria-label="Send a photo">📎</button><button id="cxRecX" class="hidden" type="button" aria-label="Cancel voice note">✕</button><button id="cxMic" type="button" aria-label="Voice note">🎤</button><button id="cxSend" class="hidden" type="button" aria-label="Send">➤</button></div>';
   document.body.appendChild(cxEl);
   const sheet = mk("div", "hidden"); sheet.id = "chSheet";
   document.body.appendChild(sheet);
@@ -104,13 +148,23 @@ function ready() {
     sheet.classList.remove("hidden");
     return box;
   }
+  const photoFile = mk("input"); photoFile.type = "file"; photoFile.accept = "image/*"; photoFile.style.display = "none"; document.body.appendChild(photoFile);
+  const stkFile = mk("input"); stkFile.type = "file"; stkFile.accept = "image/*"; stkFile.style.display = "none"; document.body.appendChild(stkFile);
+  const imgV = mk("div", "hidden"); imgV.id = "cxImgV"; imgV.appendChild(mk("img")); document.body.appendChild(imgV);
+  imgV.onclick = () => { imgV.classList.add("hidden"); imgV.firstChild.removeAttribute("src"); };
 
   // ---------- helpers ----------
+  function toast(t) {
+    let el = $("jToast");
+    if (!el) { el = mk("div"); el.id = "jToast"; document.body.appendChild(el); }
+    el.textContent = t; el.classList.add("on");
+    clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove("on"), 2600);
+  }
   const isOn = p => !!p && !!p.lastSeen && (Date.now() - p.lastSeen) < ONLINE_MS;
   const pOf = uid => players.find(x => x.uid === uid);
   const nameOf = uid => { const p = pOf(uid); return p ? (p.gameName || "Player") : "Player"; };
   const myName = () => (myP && myP.gameName) || "Player";
-  const dmId = other => [other, me.uid].sort().join("_");
+  const blockedSet = () => new Set((myP && myP.blocked) || []);
   function fillAv(el, p, name) {
     if (p && p.photo) { el.style.backgroundImage = "url(" + p.photo + ")"; el.textContent = ""; }
     else { el.style.backgroundImage = ""; el.textContent = (name || "?").charAt(0).toUpperCase(); }
@@ -128,13 +182,18 @@ function ready() {
     if (dayKey(ms) === dayKey(Date.now())) return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     return d.toLocaleDateString([], { day: "numeric", month: "short" });
   }
-  function preview(m) {
-    const t = typeof m.text === "string" ? m.text : "";
-    let s = t;
-    if (t.indexOf("[v]") === 0) s = "🎤 Voice note";
-    else if (t.indexOf("[s]") === 0) s = t.slice(3).split("|")[0] || "Sticker";
-    return (m.from === me.uid ? "You: " : "") + s;
+  // short text for lists and phone alerts
+  function labelOf(t) {
+    t = typeof t === "string" ? t : "";
+    if (t.indexOf("[v]") === 0) return "🎤 Voice note";
+    if (t.indexOf("[s]") === 0) return (t.slice(3).split("|")[0] || "") + " Sticker";
+    if (t.indexOf("[k]") === 0) return "Sticker";
+    if (t.indexOf("[i]") === 0) return "📷 Photo";
+    if (t.indexOf("[p]") === 0) return "📌 Shared a post";
+    return t;
   }
+  const isPlain = t => !/^\[[vskip]\]/.test(t);
+  function preview(m) { return (m.from === me.uid ? "You: " : "") + labelOf(m.text); }
   function streakOf(msgs, a, b) {
     const days = {};
     msgs.forEach(m => {
@@ -154,6 +213,55 @@ function ready() {
     if (cdata && typeof cdata.disappear === "boolean") return cdata.disappear;
     try { return localStorage.getItem(disKey(id)) === "1"; } catch (e) { return false; }
   }
+  // shrink a picture so it fits inside one message
+  function shrink(img, maxDim, target) {
+    let q = 0.8, md = maxDim, out = "";
+    for (let i = 0; i < 8; i++) {
+      const s = Math.min(1, md / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(img.naturalWidth * s)); c.height = Math.max(1, Math.round(img.naturalHeight * s));
+      const g = c.getContext("2d"); g.imageSmoothingQuality = "high"; g.drawImage(img, 0, 0, c.width, c.height);
+      out = c.toDataURL("image/jpeg", q);
+      if (out.length <= target) return out;
+      if (q > 0.55) q -= 0.1; else md = Math.round(md * 0.85);
+    }
+    return out;
+  }
+  function readImage(file, maxDim, target, cb) {
+    if (!file || !/^image\//.test(file.type)) { toast("Please choose a picture."); return; }
+    const rd = new FileReader();
+    rd.onload = () => {
+      const im = new Image();
+      im.onload = () => cb(shrink(im, maxDim, target));
+      im.onerror = () => toast("That picture could not be opened.");
+      im.src = rd.result;
+    };
+    rd.readAsDataURL(file);
+  }
+  // long press (also right-click)
+  function onLong(el, fn, ms) {
+    ms = ms || 480;
+    let t = null, fired = false, x0 = 0, y0 = 0;
+    const clear = () => { clearTimeout(t); t = null; };
+    el.addEventListener("pointerdown", e => { fired = false; clear(); x0 = e.clientX; y0 = e.clientY; t = setTimeout(() => { fired = true; fn(e); }, ms); });
+    el.addEventListener("pointermove", e => { if (t && Math.abs(e.clientX - x0) + Math.abs(e.clientY - y0) > 12) clear(); });
+    ["pointerup", "pointerleave", "pointercancel"].forEach(ev => el.addEventListener(ev, clear));
+    el.addEventListener("click", e => { if (fired) { e.stopPropagation(); e.preventDefault(); fired = false; } }, true);
+    el.addEventListener("contextmenu", e => { e.preventDefault(); if (!fired) { clear(); fired = true; fn(e); } });
+  }
+  async function copyText(t) {
+    try { await navigator.clipboard.writeText(t); }
+    catch (e) {
+      const ta = document.createElement("textarea"); ta.value = t; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); } catch (_) {}
+      ta.remove();
+    }
+    toast("Copied");
+  }
+  const pathOf = t => t.kind === "dm" ? ["chats", t.id, "messages"] : ["groups", t.id, "messages"];
+  const myStickers = () => { try { const a = JSON.parse(localStorage.getItem("jolt_stk") || "[]"); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
+  const saveStickers = a => { try { localStorage.setItem("jolt_stk", JSON.stringify(a.slice(0, 30))); } catch (e) { toast("Not enough space to save this sticker."); } };
 
   // ---------- chat list ----------
   function friendIds() { return Object.keys(reqs).filter(id => reqs[id].status === "accepted"); }
@@ -204,10 +312,11 @@ function ready() {
     jr.onclick = () => { const b = $("quickJux"); if (b) b.click(); };
     hub.appendChild(jr);
 
+    const blocked = blockedSet();
     const items = [];
     groups.forEach(g => {
       const arr = lastMsgs["gr:" + g.id] || [];
-      const last = arr[0];
+      const last = arr.find(m => !blocked.has(m.from));
       items.push({ kind: "group", g: g, last: last, ms: last ? msOf(last) : ((g.time && g.time.seconds) ? g.time.seconds * 1000 : 0) });
     });
     friendIds().forEach(id => {
@@ -232,9 +341,7 @@ function ready() {
         let sub = (it.g.members || []).length + " members";
         if (it.last) {
           const who = it.last.from === me.uid ? "You" : nameOf(it.last.from);
-          let t = typeof it.last.text === "string" ? it.last.text : "";
-          if (t.indexOf("[v]") === 0) t = "🎤 Voice note"; else if (t.indexOf("[s]") === 0) t = t.slice(3).split("|")[0];
-          sub = who + ": " + t;
+          sub = who + ": " + labelOf(it.last.text);
         }
         mid.appendChild(mk("span", "", sub));
         row.appendChild(mid);
@@ -245,7 +352,7 @@ function ready() {
         row.appendChild(mkAv(p, nameOf(it.ou), false, true));
         const s = it.arr ? streakOf(it.arr, me.uid, it.ou) : 0;
         mid.appendChild(mk("b", "", nameOf(it.ou) + (s >= 2 ? "  🔥" + s : "")));
-        mid.appendChild(mk("span", "", it.last ? preview(it.last) : "Say hi 👋"));
+        mid.appendChild(mk("span", "", blocked.has(it.ou) ? "🚫 Blocked" : (it.last ? preview(it.last) : "Say hi 👋")));
         row.appendChild(mid);
         if (it.ms) row.appendChild(mk("div", "chTime", timeLabel(it.ms)));
         row.onclick = () => openChat({ kind: "dm", id: it.id, title: nameOf(it.ou), other: it.ou });
@@ -322,14 +429,16 @@ function ready() {
   function openChat(ctx) {
     closeChat(true);
     cx = { kind: ctx.kind, id: ctx.id, title: ctx.title, other: ctx.other || null, g: ctx.g || null, msgs: [], cdata: {}, unsubs: [], lastMark: 0, first: true };
-    const path = ctx.kind === "dm" ? ["chats", ctx.id, "messages"] : ["groups", ctx.id, "messages"];
     $("cxTitle").textContent = ctx.title;
     $("cxAv").innerHTML = "";
     if (ctx.kind === "dm") $("cxAv").appendChild(mkAv(pOf(ctx.other), ctx.title, true, true));
     else { const a = mk("div", "chAv sm", "👥"); $("cxAv").appendChild(a); }
     $("cxLog").innerHTML = "";
+    $("cxInput").value = "";
+    $("cxPanel").classList.add("hidden"); panelMode = "";
+    syncBtn();
     cxEl.classList.remove("hidden");
-    const q = query(collection(db, ...path), orderBy("time", "desc"), limit(150));
+    const q = query(collection(db, ...pathOf(ctx)), orderBy("time", "desc"), limit(150));
     cx.unsubs.push(onSnapshot(q, snap => {
       cx.msgs = snap.docs.map(d => ({ id: d.id, ...d.data() })).reverse();
       drawChat();
@@ -339,8 +448,10 @@ function ready() {
     }
   }
   function closeChat(silent) {
+    if (rec && rec.state === "recording") { sendIt = false; try { rec.stop(); } catch (e) {} } else recReset();
     if (cx) { cx.unsubs.forEach(u => u()); cx = null; }
     cxEl.classList.add("hidden");
+    $("cxPanel").classList.add("hidden"); panelMode = "";
     if (!silent) renderHub();
   }
   function markRead() {
@@ -348,6 +459,25 @@ function ready() {
     if (Date.now() - cx.lastMark < 4000) return;
     cx.lastMark = Date.now();
     setDoc(doc(db, "chats", cx.id), { ["read_" + me.uid]: Date.now() }, { merge: true }).catch(() => {});
+  }
+  function setLock(kind) {
+    const lock = $("cxLock"), bar = cxEl.querySelector(".cxBar");
+    lock.innerHTML = "";
+    if (!kind) { lock.classList.add("hidden"); bar.classList.remove("hidden"); return; }
+    lock.classList.remove("hidden"); bar.classList.add("hidden"); $("cxPanel").classList.add("hidden");
+    if (kind === "me") {
+      lock.appendChild(mk("div", "", "🚫 You blocked " + cx.title + ". They cannot message you."));
+      const b = mk("button", "ghost", "Unblock"); b.type = "button"; const o = cx.other; b.onclick = () => setBlock(o, false);
+      lock.appendChild(b);
+    } else lock.appendChild(mk("div", "", "You cannot send messages to this person."));
+  }
+  // ---------- show a message ----------
+  function openImg(src) { imgV.firstChild.src = src; imgV.classList.remove("hidden"); }
+  function openPostFromChat(id) {
+    closeChat(false);
+    const nav = document.querySelector('nav button[data-tab="home"]');
+    if (nav) nav.click();
+    setTimeout(() => { if (window.joltOpenPost) window.joltOpenPost(id); }, 400);
   }
   function drawChat() {
     if (!cx) return;
@@ -358,12 +488,16 @@ function ready() {
     const otherRead = cx.kind === "dm" ? (cx.cdata["read_" + cx.other] || 0) : 0;
     const otherP = cx.kind === "dm" ? pOf(cx.other) : null;
     const blueOk = !(myP && myP.hideRead) && !(otherP && otherP.hideRead);
+    const blocked = blockedSet();
 
-    // subtitle: online state or streak or member count
     if (cx.kind === "dm") {
+      const byMe = blocked.has(cx.other);
+      const byThem = !!(otherP && (otherP.blocked || []).includes(me.uid));
+      setLock(byMe ? "me" : byThem ? "them" : "");
       const s = streakOf(cx.msgs.slice().reverse(), me.uid, cx.other);
       $("cxSub").textContent = (isOn(otherP) ? "🔵 Online" : "🔴 Offline") + (s >= 2 ? "  ·  🔥 " + s + " day streak" : "") + (dis ? "  ·  ⏱ 24h" : "");
     } else {
+      setLock("");
       $("cxSub").textContent = ((cx.g && cx.g.members) || []).length + " members";
     }
 
@@ -371,29 +505,51 @@ function ready() {
     cx.msgs.forEach(m => {
       const ms = msOf(m);
       if (dis && Date.now() - ms > 86400000) return;
+      if (cx.kind === "group" && blocked.has(m.from)) return;
       shown++;
       const dk = dayKey(ms);
-      if (dk !== lastDay) { lastDay = dk; log.appendChild(mk("div", "cxNote", new Date(ms).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" }))); }
+      if (dk !== lastDay) { lastDay = dk; log.appendChild(mk("div", "cxNote day", new Date(ms).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" }))); }
       const mine = m.from === me.uid;
+      const t = typeof m.text === "string" ? m.text : "";
+      const bare = t.indexOf("[k]") === 0 || t.indexOf("[s]") === 0;
       const row = mk("div", "cxMsg" + (mine ? " mine" : ""));
       if (!mine && cx.kind === "group") row.appendChild(mkAv(pOf(m.from), nameOf(m.from) || m.name, true, false));
-      const b = mk("div", "cxB");
+      const b = mk("div", "cxB" + (bare ? " bare" : ""));
       if (!mine && cx.kind === "group") b.appendChild(mk("div", "cxN", m.from === "bot" ? "🤖 Assistant" : (nameOf(m.from) !== "Player" ? nameOf(m.from) : (m.name || "Player"))));
-      const t = typeof m.text === "string" ? m.text : "";
       if (t.indexOf("[v]") === 0) {
         const au = document.createElement("audio"); au.controls = true; au.preload = "metadata"; au.src = t.slice(3);
         b.appendChild(mk("div", "", "🎤 Voice note")); b.appendChild(au);
       } else if (t.indexOf("[s]") === 0) {
         const parts = t.slice(3).split("|");
-        const st = mk("div", "", parts[0]); st.style.fontSize = "46px"; st.style.textAlign = "center";
+        const st = mk("div", "", parts[0]); st.style.fontSize = "52px"; st.style.textAlign = "center";
         b.appendChild(st); if (parts[1]) b.appendChild(mk("div", "cxNote", parts[1]));
+      } else if (t.indexOf("[k]") === 0) {
+        const im = mk("img", "cxStk"); im.src = t.slice(3); b.appendChild(im);
+      } else if (t.indexOf("[i]") === 0) {
+        const im = mk("img", "cxImg"); im.src = t.slice(3); im.onclick = () => openImg(im.src); b.appendChild(im);
+      } else if (t.indexOf("[p]") === 0) {
+        let d = null; try { d = JSON.parse(t.slice(3)); } catch (e) {}
+        if (d) {
+          const card = mk("div", "cxPost");
+          card.appendChild(mk("b", "", "📌 " + (d.name || "Player") + "'s post"));
+          if (d.thumb) { const im = mk("img"); im.src = d.thumb; card.appendChild(im); }
+          if (d.text) card.appendChild(mk("div", "", d.text));
+          card.appendChild(mk("small", "", "Tap to open"));
+          card.onclick = () => openPostFromChat(d.id);
+          b.appendChild(card);
+        } else b.appendChild(document.createTextNode("📌 Shared a post"));
       } else b.appendChild(document.createTextNode(t));
+      // reactions
+      const rc = {}; Object.values(m.reacts || {}).forEach(e => { rc[e] = (rc[e] || 0) + 1; });
+      const rs = Object.keys(rc).map(e => e + (rc[e] > 1 ? " " + rc[e] : "")).join("  ");
+      if (rs) b.appendChild(mk("div", "cxR", rs));
       const meta = mk("div", "cxM", new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
       if (mine && cx.kind === "dm") {
         const read = blueOk && m.time && m.time.seconds && ms <= otherRead;
         meta.appendChild(mk("span", "tick" + (read ? " blue" : ""), read ? "✓✓" : "✓"));
       }
       b.appendChild(meta);
+      onLong(b, () => openMsgMenu(m));
       row.appendChild(b);
       log.appendChild(row);
     });
@@ -404,37 +560,258 @@ function ready() {
     if (lastM && lastM.from !== me.uid) markRead();
   }
 
+  // ---------- message menu: react, copy, delete, report ----------
+  function openMsgMenu(m) {
+    if (!cx) return;
+    const box = openSheet("Message");
+    const rr = mk("div", "rxRow");
+    REACT_SET.forEach(e => {
+      const s = mk("span", "rxE" + (m.reacts && m.reacts[me.uid] === e ? " on" : ""), e);
+      s.onclick = () => { closeSheet(); reactMsg(m, e); };
+      rr.appendChild(s);
+    });
+    box.appendChild(rr);
+    const t = typeof m.text === "string" ? m.text : "";
+    if (isPlain(t)) {
+      const c = mk("button", "opt", "📋 Copy"); c.type = "button";
+      c.onclick = () => { closeSheet(); copyText(t); };
+      box.appendChild(c);
+    }
+    if (m.from === me.uid) {
+      const d = mk("button", "opt red", "🗑 Delete for everyone"); d.type = "button";
+      d.onclick = async () => {
+        if (!confirm("Delete this message for everyone?")) return;
+        closeSheet();
+        try { await deleteDoc(doc(db, ...pathOf(cx), m.id)); } catch (e) { toast("Could not delete the message."); }
+      };
+      box.appendChild(d);
+    } else if (m.from !== "bot") {
+      const r = mk("button", "opt red", "🚩 Report"); r.type = "button";
+      r.onclick = () => openReport(m.from, nameOf(m.from) !== "Player" ? nameOf(m.from) : (m.name || "Player"), isPlain(t) ? t : labelOf(t));
+      box.appendChild(r);
+    }
+    const x = mk("button", "opt", "Close"); x.type = "button"; x.onclick = closeSheet;
+    box.appendChild(x);
+  }
+  async function reactMsg(m, e) {
+    if (!cx) return;
+    const same = m.reacts && m.reacts[me.uid] === e;
+    try { await updateDoc(doc(db, ...pathOf(cx), m.id), { ["reacts." + me.uid]: same ? deleteField() : e }); }
+    catch (err) { toast("Could not react. Try again."); }
+  }
+  function openReport(uid, name, snippet) {
+    const box = openSheet("🚩 Report " + name);
+    REPORT_WHY.forEach(r => {
+      const b = mk("button", "opt", r); b.type = "button";
+      b.onclick = async () => {
+        try {
+          await addDoc(collection(db, "reports"), { by: me.uid, byName: myName(), reason: r, time: serverTimestamp(), targetUid: uid, targetName: name, postId: "", snippet: String(snippet || "").slice(0, 120) });
+          closeSheet(); toast("Thank you. The Owner will check it.");
+        } catch (e) { toast("Could not send the report. Try again."); }
+      };
+      box.appendChild(b);
+    });
+    const x = mk("button", "opt", "Cancel"); x.type = "button"; x.onclick = closeSheet;
+    box.appendChild(x);
+  }
+  async function setBlock(uid, on) {
+    try {
+      await updateDoc(doc(db, "players", me.uid), { blocked: on ? arrayUnion(uid) : arrayRemove(uid) });
+      closeSheet(); toast(on ? "Blocked. They cannot message you." : "Unblocked.");
+    } catch (e) { toast("Could not do that. Try again."); }
+  }
+
   // ---------- phone alerts for new messages (works when Jolt is closed) ----------
   const PUSH_URL = "https://winter-glitter-2dfe.saviatim3.workers.dev";
-  async function pushMsg(text) {
+  async function pushMsg(t, text) {
     try {
-      if (!cx || !me) return;
-      const ids = cx.kind === "dm" ? [cx.other] : ((cx.g && cx.g.members) || []).filter(u => u !== me.uid);
+      if (!t || !me) return;
+      const ids = t.kind === "dm" ? [t.other] : ((t.g && t.g.members) || []).filter(u => u !== me.uid);
       const toks = [];
-      ids.forEach(u => { const p = pOf(u); ((p && p.fcmTokens) || []).forEach(t => { if (toks.indexOf(t) < 0) toks.push(t); }); });
+      ids.forEach(u => { const p = pOf(u); ((p && p.fcmTokens) || []).forEach(k => { if (toks.indexOf(k) < 0) toks.push(k); }); });
       if (!toks.length) return;
       const idt = await auth.currentUser.getIdToken();
-      const title = cx.kind === "dm" ? myName() : (cx.title || "Group");
-      const body = (cx.kind === "dm" ? "" : myName() + ": ") + text.slice(0, 80);
+      const title = t.kind === "dm" ? myName() : (t.title || "Group");
+      const body = (t.kind === "dm" ? "" : myName() + ": ") + labelOf(text).slice(0, 80);
       await fetch(PUSH_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idToken: idt, tokens: toks, title: title, body: "💬 " + body, url: "./" }) });
     } catch (e) {}
   }
-
+  async function sendTo(t, text) {
+    await addDoc(collection(db, ...pathOf(t)), { text: text, time: serverTimestamp(), from: me.uid, name: myName(), owner: false });
+    pushMsg(t, text);
+  }
+  function sendError(e) {
+    const gone = cx && cx.kind === "dm" && (((pOf(cx.other) || {}).blocked) || []).includes(me.uid);
+    if (gone || (e && e.code === "permission-denied")) toast("You cannot send messages to this person.");
+    else toast("Message not sent. Check your internet and try again.");
+  }
+  async function sendSpecial(text) {
+    if (!cx || !me) return;
+    try { await sendTo(cx, text); } catch (e) { sendError(e); }
+  }
   async function sendMsg() {
     const inp = $("cxInput");
     const text = inp.value.trim();
     if (!text || !cx || !me) return;
-    inp.value = "";
-    const path = cx.kind === "dm" ? ["chats", cx.id, "messages"] : ["groups", cx.id, "messages"];
-    try {
-      await addDoc(collection(db, ...path), { text: text, time: serverTimestamp(), from: me.uid, name: myName(), owner: false });
-      pushMsg(text);
-    } catch (e) { inp.value = text; alert("Message not sent. Check your internet and try again."); }
+    inp.value = ""; syncBtn();
+    try { await sendTo(cx, text); }
+    catch (e) { inp.value = text; syncBtn(); sendError(e); }
+  }
+  function syncBtn() {
+    const has = $("cxInput").value.trim().length > 0;
+    const recording = !!(rec && rec.state === "recording");
+    $("cxSend").classList.toggle("hidden", !has || recording);
+    $("cxMic").classList.toggle("hidden", has && !recording);
+    $("cxAtt").classList.toggle("hidden", recording);
+    $("cxEmo").classList.toggle("hidden", recording);
+    $("cxInput").classList.toggle("hidden", recording);
   }
   $("cxSend").onclick = sendMsg;
+  $("cxInput").addEventListener("input", syncBtn);
+  $("cxInput").addEventListener("focus", () => { $("cxPanel").classList.add("hidden"); panelMode = ""; });
   $("cxInput").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); sendMsg(); } });
   $("cxBack").onclick = () => closeChat(false);
   document.addEventListener("visibilitychange", () => { if (!document.hidden && cx && cx.msgs.length) { const l = cx.msgs[cx.msgs.length - 1]; if (l.from !== me.uid) markRead(); } });
+
+  // ---------- emoji and stickers panel ----------
+  function insertAtCursor(t) {
+    const i = $("cxInput");
+    const s = i.selectionStart == null ? i.value.length : i.selectionStart;
+    const e = i.selectionEnd == null ? s : i.selectionEnd;
+    i.value = i.value.slice(0, s) + t + i.value.slice(e);
+    const pos = s + t.length;
+    try { i.setSelectionRange(pos, pos); } catch (_) {}
+    syncBtn();
+  }
+  function hidePanel() { $("cxPanel").classList.add("hidden"); panelMode = ""; }
+  function drawPanel() {
+    const p = $("cxPanel"); p.innerHTML = "";
+    const tabs = mk("div", "pnTabs");
+    [["emoji", "😊 Emoji"], ["stk", "🎭 Stickers"], ["my", "🖼 My stickers"]].forEach(o => {
+      const b = mk("button", panelMode === o[0] ? "on" : "", o[1]); b.type = "button";
+      b.onclick = () => { panelMode = o[0]; drawPanel(); };
+      tabs.appendChild(b);
+    });
+    p.appendChild(tabs);
+    const g = mk("div", "pnGrid"); p.appendChild(g);
+    if (panelMode === "emoji") {
+      EMOJIS.forEach(e => { const s = mk("span", "pnEm", e); s.onclick = () => insertAtCursor(e); g.appendChild(s); });
+    } else if (panelMode === "stk") {
+      STICKERS.forEach(st => {
+        const d = mk("div", "pnStk");
+        d.appendChild(mk("div", "a", st[0])); d.appendChild(mk("div", "b", st[1]));
+        d.onclick = () => { hidePanel(); sendSpecial("[s]" + st[0] + "|" + st[1]); };
+        g.appendChild(d);
+      });
+    } else {
+      const add = mk("div", "pnMy", "➕"); add.onclick = () => stkFile.click(); g.appendChild(add);
+      myStickers().forEach((src, i) => {
+        const d = mk("div", "pnMy"); const im = mk("img"); im.src = src; d.appendChild(im);
+        d.onclick = () => { hidePanel(); sendSpecial("[k]" + src); };
+        onLong(d, () => { if (confirm("Remove this sticker?")) { const a = myStickers(); a.splice(i, 1); saveStickers(a); drawPanel(); } });
+        g.appendChild(d);
+      });
+      if (!myStickers().length) g.appendChild(mk("div", "cxNote", "Tap ➕ to make a sticker from a picture on your phone. Press and hold a sticker to remove it."));
+    }
+  }
+  $("cxEmo").onclick = () => {
+    const p = $("cxPanel");
+    if (!p.classList.contains("hidden")) { hidePanel(); return; }
+    panelMode = panelMode || "emoji"; drawPanel(); p.classList.remove("hidden");
+    $("cxInput").blur();
+  };
+  stkFile.onchange = () => {
+    const f = stkFile.files && stkFile.files[0]; stkFile.value = "";
+    readImage(f, 240, 45000, data => { const a = myStickers(); a.unshift(data); saveStickers(a); if (panelMode === "my") drawPanel(); toast("Sticker saved."); });
+  };
+  $("cxAtt").onclick = () => { photoFile.value = ""; photoFile.click(); };
+  photoFile.onchange = () => {
+    const f = photoFile.files && photoFile.files[0]; photoFile.value = "";
+    readImage(f, 900, 170000, data => sendSpecial("[i]" + data));
+  };
+
+  // ---------- voice notes ----------
+  let rec = null, chunks = [], stream = null, rtimer = null, secs = 0, sendIt = true, recTarget = null;
+  const mmss = n => Math.floor(n / 60) + ":" + String(n % 60).padStart(2, "0");
+  function recReset() {
+    clearInterval(rtimer); rtimer = null; secs = 0;
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    $("cxMic").textContent = "🎤"; $("cxMic").classList.remove("recOn"); $("cxRecX").classList.add("hidden");
+    rec = null; chunks = [];
+    syncBtn();
+  }
+  async function recStart() {
+    if (!cx) return;
+    if (!navigator.mediaDevices || !window.MediaRecorder) { toast("Voice notes do not work in this browser."); return; }
+    try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+    catch (e) { toast("Microphone is blocked. Allow the microphone for Jolt in your phone settings."); return; }
+    let type = "";
+    ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"].some(t => { if (MediaRecorder.isTypeSupported(t)) { type = t; return true; } return false; });
+    try { rec = new MediaRecorder(stream, type ? { mimeType: type, audioBitsPerSecond: 24000 } : { audioBitsPerSecond: 24000 }); }
+    catch (e) { rec = new MediaRecorder(stream); }
+    recTarget = { kind: cx.kind, id: cx.id, other: cx.other, g: cx.g, title: cx.title };
+    chunks = []; sendIt = true;
+    rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+    rec.onstop = () => {
+      const keep = sendIt, parts = chunks, mime = rec && rec.mimeType ? rec.mimeType : "audio/webm", target = recTarget;
+      recReset();
+      if (!keep || !parts.length || !target) return;
+      const blob = new Blob(parts, { type: mime });
+      if (blob.size > 600000) { toast("That voice note is too long. Keep it under 1 minute."); return; }
+      const fr = new FileReader();
+      fr.onload = async () => { try { await sendTo(target, "[v]" + fr.result); } catch (e) { sendError(e); } };
+      fr.readAsDataURL(blob);
+    };
+    rec.start();
+    secs = 0;
+    $("cxMic").textContent = "⏹ 0:00"; $("cxMic").classList.add("recOn"); $("cxRecX").classList.remove("hidden");
+    hidePanel(); syncBtn();
+    rtimer = setInterval(() => {
+      secs++;
+      $("cxMic").textContent = "⏹ " + mmss(secs);
+      if (secs >= 60 && rec && rec.state === "recording") rec.stop();
+    }, 1000);
+  }
+  $("cxMic").onclick = () => {
+    if (rec && rec.state === "recording") { sendIt = true; rec.stop(); }
+    else recStart();
+  };
+  $("cxRecX").onclick = () => { sendIt = false; if (rec && rec.state === "recording") rec.stop(); else recReset(); };
+
+  // ---------- share a post to a chat (used by the For You page) ----------
+  function thumbOf(src) {
+    return new Promise(res => {
+      if (!src || String(src).indexOf("data:image/") !== 0) return res("");
+      const im = new Image();
+      im.onload = () => res(shrink(im, 200, 16000));
+      im.onerror = () => res("");
+      im.src = src;
+    });
+  }
+  function openShareSheet(post) {
+    const box = openSheet("📤 Send to a friend");
+    const targets = [];
+    friendIds().forEach(id => { const ou = reqs[id].participants.find(x => x !== me.uid); targets.push({ kind: "dm", id: id, other: ou, title: nameOf(ou) }); });
+    groups.forEach(g => targets.push({ kind: "group", id: g.id, title: g.name || "Group", g: g }));
+    if (!targets.length) box.appendChild(mk("div", "chEmpty", "No friends or groups yet. Send a friend request first."));
+    const payload = thumbOf(post.img).then(th => "[p]" + JSON.stringify({ id: post.id, uid: post.uid, name: post.name || "Player", text: String(post.text || "").slice(0, 90), thumb: th }));
+    targets.forEach(t => {
+      const row = mk("div", "rq");
+      if (t.kind === "dm") row.appendChild(mkAv(pOf(t.other), t.title, true, false)); else row.appendChild(mk("div", "chAv sm", "👥"));
+      const mid = mk("div", "chMid"); mid.appendChild(mk("b", "", t.title)); row.appendChild(mid);
+      const b = mk("button", "green", "Send"); b.type = "button";
+      b.onclick = async () => {
+        b.disabled = true; b.textContent = "...";
+        try { await sendTo(t, await payload); b.textContent = "Sent ✓"; }
+        catch (e) { b.disabled = false; b.textContent = "Send"; toast("Could not send. Try again."); }
+      };
+      row.appendChild(b);
+      box.appendChild(row);
+    });
+    const x = mk("button", "opt", "Close"); x.type = "button"; x.onclick = closeSheet;
+    box.appendChild(x);
+  }
+  window.joltSharePost = post => { if (!me) return; openShareSheet(post); };
 
   // ---------- chat options ----------
   $("cxMenu").onclick = () => {
@@ -457,6 +834,17 @@ function ready() {
         closeSheet(); drawChat();
       };
       box.appendChild(d);
+      const other = cx.other, oname = cx.title;
+      const isB = blockedSet().has(other);
+      const bl = mk("button", "opt red", isB ? "✅ Unblock " + oname : "🚫 Block " + oname); bl.type = "button";
+      bl.onclick = () => {
+        if (isB) { setBlock(other, false); return; }
+        if (confirm("Block " + oname + "? They will not be able to message you.")) setBlock(other, true);
+      };
+      box.appendChild(bl);
+      const rp = mk("button", "opt red", "🚩 Report " + oname); rp.type = "button";
+      rp.onclick = () => openReport(other, oname, "");
+      box.appendChild(rp);
     } else {
       const g = cx.g;
       const mine = g && g.owner === me.uid;
@@ -504,6 +892,6 @@ function ready() {
       syncLast(); renderHub();
     }, () => {}));
     // keep online dots fresh
-    unsubs.push((function () { const t = setInterval(() => { renderHub(); if (cx) drawChat(); }, 60000); return () => clearInterval(t); })());
+    unsubs.push((function () { const t = setInterval(() => { renderHub(); if (cx && !(rec && rec.state === "recording")) drawChat(); }, 60000); return () => clearInterval(t); })());
   });
 })();
