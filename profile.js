@@ -273,10 +273,18 @@ function postCard(p, opt) {
   if (opt.profile && mine) c.appendChild(mk("div", "jdate", "Posted " + dateTimeText(p)));
 
   const imgs = imgsOf(p);
+  const hasVid = !!(p.video && String(p.video).indexOf("data:video/") === 0);
   const body = mk("div", "pbody");
   body.style.position = "relative";
   let carEl = null;
-  if (imgs.length) {
+  if (hasVid) {
+    const vw = mk("div", "jvid");
+    const v = document.createElement("video");
+    v.src = p.video; v.controls = true; v.playsInline = true; v.loop = true; v.preload = "metadata";
+    if (p.vthumb) v.poster = p.vthumb;
+    v.onplay = () => { document.querySelectorAll(".jvid video").forEach(o => { if (o !== v) o.pause(); }); };
+    vw.appendChild(v); body.appendChild(vw);
+  } else if (imgs.length) {
     const car = mk("div", "jcar"); carEl = car;
     imgs.forEach(s => { const im = mk("img"); im.src = s; im.draggable = false; im.loading = "lazy"; im.decoding = "async"; car.appendChild(im); });
     body.appendChild(car);
@@ -330,7 +338,7 @@ function postCard(p, opt) {
   const cb = mk("button", "ibtn"); cb.type = "button"; cb.innerHTML = ICON_CMT; cb.onclick = e => { e.stopPropagation(); openComments(p); };
   const fb = mk("button", "ibtn fireBtn" + (f ? " on" : ""), "🔥"); fb.type = "button"; fb.onclick = e => { e.stopPropagation(); react(p, "fires", f); };
   const sb = mk("button", "ibtn"); sb.type = "button"; sb.title = "Send to a friend"; sb.innerHTML = ICON_SEND;
-  sb.onclick = e => { e.stopPropagation(); if (window.joltSharePost) window.joltSharePost({ id: p.id, uid: p.uid, name: p.name, text: p.text || "", img: imgs[0] || "" }); else toast("Chat is still loading. Try again in a moment."); };
+  sb.onclick = e => { e.stopPropagation(); if (window.joltSharePost) window.joltSharePost({ id: p.id, uid: p.uid, name: p.name, text: p.text || (hasVid ? "🎬 Video" : ""), img: imgs[0] || p.vthumb || "" }); else toast("Chat is still loading. Try again in a moment."); };
   acts.appendChild(hb); acts.appendChild(cb); acts.appendChild(fb); acts.appendChild(sb);
   c.appendChild(acts);
   if (likes.length || fires.length) {
@@ -339,7 +347,7 @@ function postCard(p, opt) {
     if (fires.length) parts.push("🔥 " + fires.length);
     c.appendChild(mk("div", "counts", parts.join("  ·  ")));
   }
-  if (p.text && imgs.length) {
+  if (p.text && (imgs.length || hasVid)) {
     const cap = mk("div", "caption"); cap.appendChild(mk("b", "", (p.name || "Player") + " ")); cap.appendChild(document.createTextNode(p.text)); c.appendChild(cap);
   }
   const cc = p.commentCount || 0;
@@ -526,7 +534,7 @@ async function delComment(c) {
 }
 
 // ---------- new post box (lives on your own page) ----------
-let cImgs = [], cBg = COLORS[0], pvAudio = null;
+let cImgs = [], cBg = COLORS[0], pvAudio = null, cVideo = null, vidBusy = false;
 function stopPreview() { if (pvAudio) { pvAudio.pause(); pvAudio = null; } const b = $("jListen"); if (b) b.textContent = "▶ Listen"; }
 function buildComposer() {
   const card = mk("div", "card jbox"); card.id = "jComposer";
@@ -534,6 +542,8 @@ function buildComposer() {
     + '<div id="jColors" class="jcolors"></div><div id="jPrev" class="jprev"></div><div id="jThumbs" class="jthumbs"></div>'
     + '<input id="jFiles" type="file" accept="image/*" multiple class="hidden">'
     + '<div class="jrow"><button id="jAdd" class="ghost" type="button">📷 Add pictures</button><button id="jCam" class="ghost" type="button">🤳 Take photo</button></div>'
+    + '<div class="jrow"><button id="jVid" class="ghost" type="button">🎬 Add video (12s)</button><button id="jRec" class="ghost" type="button">🎥 Record video</button></div>'
+    + '<input id="jVidFile" type="file" accept="video/*" class="hidden"><input id="jRecFile" type="file" accept="video/*" capture="environment" class="hidden"><div id="jVidPrev"></div>'
     + '<div class="jrow"><select id="jMusic"></select><button id="jListen" class="ghost" type="button">▶ Listen</button></div>'
     + '<div class="jrow"><select id="jCat"><option value="gaming">🎮 Gaming</option><option value="lifestyle">🌍 Lifestyle</option><option value="fun">😂 Fun</option></select></div>'
     + '<button id="jPost" class="green" type="button">Post</button><div id="jMsg" class="mut"></div>';
@@ -556,24 +566,126 @@ function buildComposer() {
   $("jCam").onclick = () => { const cb = $("camBtn"); if (cb) cb.click(); };
   $("jFiles").onchange = async e => {
     const files = [...e.target.files]; e.target.value = "";
+    if (files.length) cVideo = null;
     for (const f of files) {
       if (cImgs.length >= 6) { $("jMsg").textContent = "6 pictures is the most."; break; }
       try { const im = await loadImg(await readFile(f)); cImgs.push(shrink(im, 1080, 140000)); } catch (err) {}
     }
     drawComposer();
   };
+  const vst = document.createElement("style");
+  vst.textContent = ".jvid video{width:calc(100% + 24px);max-width:none;margin:0 -12px;display:block;max-height:560px;background:#000}#jVidPrev video{width:100%;max-height:260px;border-radius:14px;background:#000;margin-top:8px}#jVidPrev .jvx{width:auto;margin:6px 0 0;padding:7px 14px;font-size:13px}";
+  document.head.appendChild(vst);
+  $("jVid").onclick = () => $("jVidFile").click();
+  $("jRec").onclick = () => $("jRecFile").click();
+  $("jVidFile").onchange = e => pickVideo(e);
+  $("jRecFile").onchange = e => pickVideo(e);
   $("jPost").onclick = doPost;
   drawComposer();
+}
+
+// ---------- 12-second videos: shrink the clip on the phone so it fits in the database ----------
+async function pickVideo(e) {
+  const f = e.target.files[0]; e.target.value = "";
+  if (!f || vidBusy) return;
+  const msg = $("jMsg");
+  vidBusy = true; $("jPost").disabled = true;
+  try {
+    cVideo = null; cImgs = [];
+    msg.textContent = "Preparing video...";
+    cVideo = await makeVideo(f, t => { msg.textContent = "Preparing video... " + t; });
+    msg.textContent = "Video ready ✅";
+  } catch (err) {
+    cVideo = null;
+    msg.textContent = (err && err.message && err.message.indexOf("Video") === 0) ? err.message : "Could not prepare this video. Try a shorter clip.";
+  }
+  vidBusy = false; $("jPost").disabled = false;
+  drawComposer();
+}
+function makeVideo(file, progress) {
+  return new Promise(async (resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    let ac = null, done = false, rec = null;
+    const clean = () => { try { URL.revokeObjectURL(url); } catch (x) {} try { if (ac) ac.close(); } catch (x) {} };
+    const fail = m => { if (done) return; done = true; clean(); try { if (rec && rec.state !== "inactive") rec.stop(); } catch (x) {} reject(new Error(m)); };
+    try {
+      if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) return fail("Video: this phone browser cannot prepare videos.");
+      const v = document.createElement("video");
+      v.src = url; v.playsInline = true; v.preload = "auto";
+      await new Promise((ok, no) => { v.onloadedmetadata = ok; v.onerror = () => no(new Error("open")); });
+      const dur = Math.min(isFinite(v.duration) && v.duration > 0 ? v.duration : 12, 12);
+      const sc = Math.min(1, 480 / Math.max(v.videoWidth, v.videoHeight));
+      const w = Math.max(2, Math.round(v.videoWidth * sc / 2) * 2), h = Math.max(2, Math.round(v.videoHeight * sc / 2) * 2);
+      const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+      const g = cv.getContext("2d");
+      // small picture for the grid and chat card
+      v.currentTime = Math.min(0.4, dur / 3);
+      await new Promise(ok => { v.onseeked = ok; });
+      g.drawImage(v, 0, 0, w, h);
+      const tc = document.createElement("canvas"); const ts = Math.min(1, 240 / Math.max(w, h));
+      tc.width = Math.round(w * ts); tc.height = Math.round(h * ts);
+      tc.getContext("2d").drawImage(cv, 0, 0, tc.width, tc.height);
+      const thumb = tc.toDataURL("image/jpeg", 0.6);
+      v.currentTime = 0;
+      await new Promise(ok => { v.onseeked = ok; });
+      const stream = cv.captureStream(24);
+      try {
+        ac = new (window.AudioContext || window.webkitAudioContext)();
+        const srcN = ac.createMediaElementSource(v), dst = ac.createMediaStreamDestination();
+        srcN.connect(dst);
+        dst.stream.getAudioTracks().forEach(t => stream.addTrack(t));
+        if (ac.state === "suspended") await ac.resume();
+      } catch (x) { ac = null; }
+      const types = ["video/webm;codecs=vp8,opus", "video/webm;codecs=vp9,opus", "video/webm", "video/mp4"];
+      const mime = types.find(t => MediaRecorder.isTypeSupported(t)) || "";
+      rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 240000, audioBitsPerSecond: 32000 } : { videoBitsPerSecond: 240000 });
+      const chunks = [];
+      rec.ondataavailable = ev => { if (ev.data && ev.data.size) chunks.push(ev.data); };
+      rec.onstop = () => {
+        if (done) return; done = true; clean();
+        const blob = new Blob(chunks, { type: (rec.mimeType || mime || "video/webm").split(";")[0] });
+        if (!blob.size) return reject(new Error("Video: nothing was recorded. Try again."));
+        if (blob.size > 600000) return reject(new Error("Video: this clip is too big. Try a simpler or shorter clip."));
+        const fr = new FileReader();
+        fr.onload = () => resolve({ data: fr.result, thumb: thumb });
+        fr.onerror = () => reject(new Error("read"));
+        fr.readAsDataURL(blob);
+      };
+      let stopped = false;
+      const stopNow = () => { if (!stopped) { stopped = true; try { rec.stop(); } catch (x) {} try { v.pause(); } catch (x) {} } };
+      const loop = () => {
+        if (done || stopped) return;
+        g.drawImage(v, 0, 0, w, h);
+        progress(Math.floor(v.currentTime) + "/" + Math.round(dur) + "s");
+        if (v.currentTime >= dur - 0.05 || v.ended) { stopNow(); return; }
+        requestAnimationFrame(loop);
+      };
+      rec.start(300);
+      try { await v.play(); } catch (x) { return fail("Video: tap the video button again to allow playing."); }
+      requestAnimationFrame(loop);
+      setTimeout(stopNow, (dur + 3) * 1000);
+    } catch (err) { fail("Could not prepare this video."); }
+  });
 }
 function drawComposer() {
   const txt = $("jText").value;
   const cols = $("jColors"), prev = $("jPrev"), th = $("jThumbs");
   cols.innerHTML = "";
-  const textOnly = cImgs.length === 0;
+  const textOnly = cImgs.length === 0 && !cVideo;
   cols.style.display = textOnly ? "flex" : "none";
   prev.style.display = textOnly && txt.trim() ? "flex" : "none";
   prev.style.background = cBg; prev.textContent = txt;
   COLORS.forEach(c => { const s = mk("span", c === cBg ? "on" : ""); s.style.background = c; s.onclick = () => { cBg = c; drawComposer(); }; cols.appendChild(s); });
+  const vp = $("jVidPrev");
+  if (vp) {
+    vp.innerHTML = "";
+    if (cVideo) {
+      const pv = document.createElement("video"); pv.src = cVideo.data; pv.controls = true; pv.playsInline = true; pv.muted = true;
+      vp.appendChild(pv);
+      const x = mk("button", "ghost jvx", "✕ Remove video"); x.type = "button"; x.onclick = () => { cVideo = null; drawComposer(); };
+      vp.appendChild(x);
+    }
+  }
   th.innerHTML = "";
   cImgs.forEach((src, i) => {
     const d = mk("div"); const im = mk("img"); im.src = src; d.appendChild(im);
@@ -584,19 +696,21 @@ function drawComposer() {
 async function doPost() {
   const text = $("jText").value.trim();
   const msg = $("jMsg");
-  if (!text && !cImgs.length) { msg.textContent = "Write something or add a picture."; return; }
+  if (!text && !cImgs.length && !cVideo) { msg.textContent = "Write something, or add a picture or video."; return; }
+  if (vidBusy) { msg.textContent = "Wait, the video is still getting ready."; return; }
   if (!myProf()) { msg.textContent = "Save your profile first (tap Edit profile)."; return; }
   const total = cImgs.reduce((n, s) => n + s.length, 0);
+  if (cVideo && cVideo.data.length + cVideo.thumb.length > 900000) { msg.textContent = "This video is too big. Try a shorter clip."; return; }
   if (total > 950000) { msg.textContent = "Pictures are too big together. Remove one."; return; }
   const btn = $("jPost"); btn.disabled = true; msg.textContent = "Posting...";
   stopPreview();
   try {
     await addDoc(collection(db, "posts"), {
       uid: me.uid, name: myProf().gameName, text: text, img: cImgs[0] || "", imgs: cImgs.slice(),
-      bg: cImgs.length ? "" : cBg, category: $("jCat").value, music: $("jMusic").value,
+      bg: (cImgs.length || cVideo) ? "" : cBg, video: cVideo ? cVideo.data : "", vthumb: cVideo ? cVideo.thumb : "", category: $("jCat").value, music: $("jMusic").value,
       time: serverTimestamp(), likes: [], fires: [], commentCount: 0
     });
-    $("jText").value = ""; cImgs = []; $("jMusic").value = "";
+    $("jText").value = ""; cImgs = []; cVideo = null; $("jMusic").value = "";
     drawComposer(); msg.textContent = ""; toast("Posted ✅");
   } catch (e) { msg.textContent = "Could not post. Try fewer pictures."; }
   btn.disabled = false;
@@ -629,7 +743,12 @@ function stat(n, label) { const d = mk("div"); d.appendChild(mk("b", "", String(
 function tile(x) {
   const imgs = imgsOf(x);
   const t = mk("div", "jt");
-  if (imgs.length) { const im = mk("img"); im.src = imgs[0]; im.draggable = false; t.appendChild(im); }
+  if (x.video && !imgs.length) {
+    if (x.vthumb) { const im = mk("img"); im.src = x.vthumb; im.draggable = false; t.appendChild(im); }
+    else { t.classList.add("tx"); t.style.background = "#111"; }
+    t.appendChild(mk("em", "", "🎬"));
+  }
+  else if (imgs.length) { const im = mk("img"); im.src = imgs[0]; im.draggable = false; t.appendChild(im); }
   else { t.classList.add("tx"); t.style.background = x.bg || COLORS[1]; t.appendChild(mk("span", "", (x.text || "").slice(0, 60))); }
   const n = (x.likes || []).length + (x.fires || []).length;
   if (n) t.appendChild(mk("i", "", "❤ " + n));
