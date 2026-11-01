@@ -404,6 +404,22 @@ function ready() {
     if (lastM && lastM.from !== me.uid) markRead();
   }
 
+  // ---------- phone alerts for new messages (works when Jolt is closed) ----------
+  const PUSH_URL = "https://winter-glitter-2dfe.saviatim3.workers.dev";
+  async function pushMsg(text) {
+    try {
+      if (!cx || !me) return;
+      const ids = cx.kind === "dm" ? [cx.other] : ((cx.g && cx.g.members) || []).filter(u => u !== me.uid);
+      const toks = [];
+      ids.forEach(u => { const p = pOf(u); ((p && p.fcmTokens) || []).forEach(t => { if (toks.indexOf(t) < 0) toks.push(t); }); });
+      if (!toks.length) return;
+      const idt = await auth.currentUser.getIdToken();
+      const title = cx.kind === "dm" ? myName() : (cx.title || "Group");
+      const body = (cx.kind === "dm" ? "" : myName() + ": ") + text.slice(0, 80);
+      await fetch(PUSH_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idToken: idt, tokens: toks, title: title, body: "💬 " + body, url: "./" }) });
+    } catch (e) {}
+  }
+
   async function sendMsg() {
     const inp = $("cxInput");
     const text = inp.value.trim();
@@ -412,6 +428,7 @@ function ready() {
     const path = cx.kind === "dm" ? ["chats", cx.id, "messages"] : ["groups", cx.id, "messages"];
     try {
       await addDoc(collection(db, ...path), { text: text, time: serverTimestamp(), from: me.uid, name: myName(), owner: false });
+      pushMsg(text);
     } catch (e) { inp.value = text; alert("Message not sent. Check your internet and try again."); }
   }
   $("cxSend").onclick = sendMsg;
