@@ -1,4 +1,4 @@
-// Jolt - FILE 2: For You page, new posts, comments, profile pages.
+// Jolt - FILE 2: For You page, new posts, comments, profile pages. (with # hashtags and @mentions)
 // Plugs into index.html with ONE line at the bottom:
 // <script type="module" src="profile.js?v=1"></script>
 import { getApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -66,6 +66,48 @@ function nameEl(name, uid) {
   if (uid && uid === ownerUid) b.appendChild(mk("span", "badge", "👑 OWNER"));
   return b;
 }
+
+// ---------- hashtags (#) and mentions (@) ----------
+const TAGRE = /(#[\p{L}\p{N}_]{1,30}|@[\p{L}\p{N}_]{2,30})/gu;
+const TAGONE = /#([\p{L}\p{N}_]{1,30})/gu;
+const MENRE = /@([\p{L}\p{N}_]{2,30})/gu;
+function findHandle(h) {
+  h = String(h || "").toLowerCase();
+  const exact = players.find(p => p.gameName && p.gameName.replace(/\s+/g, "").toLowerCase() === h);
+  if (exact) return exact;
+  const first = players.filter(p => p.gameName && p.gameName.trim().split(/\s+/)[0].toLowerCase() === h);
+  return first.length === 1 ? first[0] : null;
+}
+function mentionedUids(text) {
+  const out = new Set();
+  String(text || "").replace(MENRE, (m, h) => { const u = findHandle(h); if (u && me && u.uid !== me.uid) out.add(u.uid); return m; });
+  return [...out];
+}
+function hasTag(text, tag) {
+  let hit = false;
+  String(text || "").replace(TAGONE, (m, t) => { if (t.toLowerCase() === tag) hit = true; return m; });
+  return hit;
+}
+function linkify(el, text) {
+  String(text || "").split(TAGRE).forEach((part, i) => {
+    if (!part) return;
+    if (i % 2 === 1) {
+      if (part.charAt(0) === "#") {
+        const s = mk("span", "jtag", part);
+        s.onclick = e => { e.stopPropagation(); openTag(part.slice(1).toLowerCase()); };
+        el.appendChild(s); return;
+      }
+      const u = findHandle(part.slice(1));
+      if (u) {
+        const s = mk("span", "jtag", part);
+        s.onclick = e => { e.stopPropagation(); closeTag(); closeComments(); openUser(u.uid); };
+        el.appendChild(s); return;
+      }
+    }
+    el.appendChild(document.createTextNode(part));
+  });
+}
+
 // phone buzz (works when Jolt is closed), same push worker the chat uses
 const PUSH_URL = "https://winter-glitter-2dfe.saviatim3.workers.dev";
 async function pushTo(uid, body) {
@@ -84,6 +126,10 @@ async function notify(to, type, postId, text) {
     const who = myName();
     pushTo(to, type === "like" ? "❤️ " + who + " liked your post" : type === "fire" ? "🔥 " + who + " fired up your post" : "💬 " + who + " commented: " + (text || ""));
   } catch (e) {}
+}
+// tell people who were tagged with @name
+function notifyMentions(text, postId) {
+  mentionedUids(text).forEach(u => notify(u, "comment", postId, "mentioned you: " + String(text).slice(0, 50)));
 }
 // shrink a picture so many fit in one post
 function shrink(img, maxDim, target) {
@@ -106,6 +152,13 @@ function readFile(f) { return new Promise((res, rej) => { const r = new FileRead
 const css = document.createElement("style");
 css.textContent = `
 .jflash{outline:2px solid #1d9bf0;outline-offset:2px;border-radius:12px}
+.jtag{color:#1d9bf0;font-weight:600;cursor:pointer}
+#jtg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9990;display:flex;align-items:flex-end}
+#jtg.hidden{display:none}
+#jtg .jsh{background:var(--bg);width:100%;max-height:90vh;border-radius:20px 20px 0 0;display:flex;flex-direction:column}
+#jtg .jhd{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line)}
+#jtg .jhd button{width:auto;margin:0;background:none;border:none;color:var(--tx);font-size:20px}
+#jtgList{overflow-y:auto;padding:8px 12px;flex:1;min-height:140px}
 #jToast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%) translateY(20px);background:#222;color:#fff;padding:10px 16px;border-radius:20px;font-size:14px;opacity:0;pointer-events:none;transition:.25s;z-index:99999;max-width:86%;text-align:center}
 #jToast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 .jcat{display:flex;gap:8px;overflow-x:auto;padding:4px 0 10px}
@@ -258,7 +311,7 @@ function postCard(p, opt) {
   info.appendChild(nameEl(p.name, p.uid));
   info.appendChild(mk("span", "mut", CATS[p.category] || CATS.gaming));
   head.appendChild(info);
-  if (!opt.profile) head.onclick = () => openUser(p.uid);
+  if (!opt.profile) head.onclick = () => { closeTag(); openUser(p.uid); };
   const canDel = mine || isOwner(), canRep = !mine;
   const more = mk("button", "dots", "⋯"); more.type = "button";
   const menu = mk("div", "pmenu hidden");
@@ -296,13 +349,13 @@ function postCard(p, opt) {
   } else if (p.text) {
     body.classList.add("textOnly");
     if (p.bg) body.style.background = p.bg;
-    body.appendChild(mk("p", "bigText", p.text));
+    const bt = mk("p", "bigText"); linkify(bt, p.text); body.appendChild(bt);
   }
   const pop = mk("div", "heartPop", "❤️"); body.appendChild(pop);
   const tt = mk("div", "jtime", "🕒 " + timeText(p));
   let lastTap = 0, tapT = null;
   body.addEventListener("pointerup", e => {
-    if (e.target.closest && e.target.closest("button")) return;
+    if (e.target.closest && (e.target.closest("button") || e.target.closest(".jtag"))) return;
     const now = Date.now();
     if (now - lastTap < 300) {
       lastTap = 0; clearTimeout(tapT);
@@ -350,7 +403,7 @@ function postCard(p, opt) {
     c.appendChild(mk("div", "counts", parts.join("  ·  ")));
   }
   if (p.text && (imgs.length || hasVid)) {
-    const cap = mk("div", "caption"); cap.appendChild(mk("b", "", (p.name || "Player") + " ")); cap.appendChild(document.createTextNode(p.text)); c.appendChild(cap);
+    const cap = mk("div", "caption"); cap.appendChild(mk("b", "", (p.name || "Player") + " ")); linkify(cap, p.text); c.appendChild(cap);
   }
   const cc = p.commentCount || 0;
   const vc = mk("div", "viewCmts", cc ? "View all " + cc + (cc === 1 ? " comment" : " comments") : "Add a comment...");
@@ -435,18 +488,38 @@ function renderFYP() {
   checkCur();
 }
 
+// ---------- hashtag page: tap a # to see every post with it ----------
+let tagNow = "";
+function buildTagSheet() {
+  const s = mk("div", "hidden"); s.id = "jtg";
+  s.innerHTML = '<div class="jsh"><div class="jhd"><b id="jtgT"></b><button type="button" id="jtgX">✕</button></div><div id="jtgList"></div></div>';
+  document.body.appendChild(s);
+  s.onclick = e => { if (e.target === s) closeTag(); };
+  $("jtgX").onclick = closeTag;
+}
+function closeTag() { const s = $("jtg"); if (s) s.classList.add("hidden"); tagNow = ""; }
+function openTag(tag) { tagNow = tag; $("jtg").classList.remove("hidden"); renderTag(); }
+function renderTag() {
+  if (!tagNow || !me) return;
+  const list = $("jtgList"); list.innerHTML = "";
+  const found = posts.filter(p => hasTag(p.text, tagNow) && !postsHidden(p.uid));
+  $("jtgT").textContent = "#" + tagNow + "  ·  " + found.length + (found.length === 1 ? " post" : " posts");
+  if (!found.length) { list.appendChild(mk("div", "mut", "No posts with this hashtag yet.")); return; }
+  found.forEach(p => list.appendChild(postCard(p)));
+}
+
 // ---------- comments (like, react, reply) ----------
 let cmUnsub = null, cmPost = null, cmReply = null;
 function buildCommentSheet() {
   const s = mk("div", "hidden"); s.id = "jcm";
-  s.innerHTML = '<div class="jsh"><div class="jhd"><b>💬 Comments</b><button type="button" id="jcmX">✕</button></div><div id="jcmList"></div><div id="jcmBar"><div id="jcmRep" class="hidden"></div><div class="jf"><input id="jcmInp" maxlength="300" placeholder="Write a comment"><button class="send green" type="button" id="jcmSend">Send</button></div></div></div>';
+  s.innerHTML = '<div class="jsh"><div class="jhd"><b>💬 Comments</b><button type="button" id="jcmX">✕</button></div><div id="jcmList"></div><div id="jcmBar"><div id="jcmRep" class="hidden"></div><div class="jf"><input id="jcmInp" maxlength="300" placeholder="Write a comment (use # and @)"><button class="send green" type="button" id="jcmSend">Send</button></div></div></div>';
   document.body.appendChild(s);
   s.onclick = e => { if (e.target === s) closeComments(); };
   $("jcmX").onclick = closeComments;
   $("jcmSend").onclick = sendComment;
   $("jcmInp").addEventListener("keydown", e => { if (e.key === "Enter") sendComment(); });
 }
-function closeComments() { if (cmUnsub) { cmUnsub(); cmUnsub = null; } cmPost = null; cmReply = null; $("jcm").classList.add("hidden"); }
+function closeComments() { if (cmUnsub) { cmUnsub(); cmUnsub = null; } cmPost = null; cmReply = null; const c = $("jcm"); if (c) c.classList.add("hidden"); }
 function openComments(p) {
   closeComments();
   cmPost = p; cmReply = null;
@@ -469,7 +542,7 @@ function commentRow(c, isReply) {
   const b = mk("div", "jb");
   const n = mk("b", "", c.name || "Player"); if (c.uid === ownerUid) n.appendChild(mk("span", "badge", "👑"));
   b.appendChild(n);
-  const t = mk("p"); if (isReply && c.replyName) t.appendChild(mk("span", "mut", "@" + c.replyName + " ")); t.appendChild(document.createTextNode(c.text || "")); b.appendChild(t);
+  const t = mk("p"); if (isReply && c.replyName) t.appendChild(mk("span", "mut", "@" + c.replyName + " ")); linkify(t, c.text || ""); b.appendChild(t);
   const rc = {}; Object.values(c.reacts || {}).forEach(e => { rc[e] = (rc[e] || 0) + 1; });
   const rs = Object.keys(rc).map(e => e + rc[e]).join("  ");
   if (rs) b.appendChild(mk("div", "jrc", rs));
@@ -514,6 +587,7 @@ async function sendComment() {
     await addDoc(collection(db, "posts", p.id, "comments"), data);
     try { await updateDoc(doc(db, "posts", p.id), { commentCount: increment(1) }); } catch (e) {}
     notify(p.uid, "comment", p.id, text.slice(0, 60));
+    mentionedUids(text).filter(u => u !== p.uid).forEach(u => notify(u, "comment", p.id, "mentioned you: " + text.slice(0, 50)));
   } catch (e) { toast("Could not send comment."); }
 }
 async function likeComment(c, on) {
@@ -540,7 +614,7 @@ let cImgs = [], cBg = COLORS[0], pvAudio = null, cVideo = null, vidBusy = false;
 function stopPreview() { if (pvAudio) { pvAudio.pause(); pvAudio = null; } const b = $("jListen"); if (b) b.textContent = "▶ Listen"; }
 function buildComposer() {
   const card = mk("div", "card jbox"); card.id = "jComposer";
-  card.innerHTML = '<h2>✍️ New post</h2><textarea id="jText" maxlength="300" placeholder="What is on your mind? 🔥"></textarea>'
+  card.innerHTML = '<h2>✍️ New post</h2><textarea id="jText" maxlength="300" placeholder="What is on your mind? Use #tags and @names 🔥"></textarea>'
     + '<div id="jColors" class="jcolors"></div><div id="jPrev" class="jprev"></div><div id="jThumbs" class="jthumbs"></div>'
     + '<input id="jFiles" type="file" accept="image/*" multiple class="hidden">'
     + '<div class="jrow"><button id="jAdd" class="ghost" type="button">📷 Add pictures</button><button id="jCam" class="ghost" type="button">🤳 Take photo</button></div>'
@@ -662,71 +736,6 @@ async function uploadVideo(file, progress) {
   });
   return { data: data, thumb: thumb };
 }
-function makeVideo(file, progress) {
-  return new Promise(async (resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    let ac = null, done = false, rec = null;
-    const clean = () => { try { URL.revokeObjectURL(url); } catch (x) {} try { if (ac) ac.close(); } catch (x) {} };
-    const fail = m => { if (done) return; done = true; clean(); try { if (rec && rec.state !== "inactive") rec.stop(); } catch (x) {} reject(new Error(m)); };
-    try {
-      if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) return fail("Video: this phone browser cannot prepare videos.");
-      const v = document.createElement("video");
-      v.src = url; v.playsInline = true; v.preload = "auto";
-      await new Promise((ok, no) => { v.onloadedmetadata = ok; v.onerror = () => no(new Error("open")); });
-      const dur = Math.min(isFinite(v.duration) && v.duration > 0 ? v.duration : 12, 12);
-      const sc = Math.min(1, 480 / Math.max(v.videoWidth, v.videoHeight));
-      const w = Math.max(2, Math.round(v.videoWidth * sc / 2) * 2), h = Math.max(2, Math.round(v.videoHeight * sc / 2) * 2);
-      const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
-      const g = cv.getContext("2d");
-      // small picture for the grid and chat card
-      v.currentTime = Math.min(0.4, dur / 3);
-      await new Promise(ok => { v.onseeked = ok; });
-      g.drawImage(v, 0, 0, w, h);
-      const tc = document.createElement("canvas"); const ts = Math.min(1, 240 / Math.max(w, h));
-      tc.width = Math.round(w * ts); tc.height = Math.round(h * ts);
-      tc.getContext("2d").drawImage(cv, 0, 0, tc.width, tc.height);
-      const thumb = tc.toDataURL("image/jpeg", 0.6);
-      v.currentTime = 0;
-      await new Promise(ok => { v.onseeked = ok; });
-      const stream = cv.captureStream(24);
-      try {
-        ac = new (window.AudioContext || window.webkitAudioContext)();
-        const srcN = ac.createMediaElementSource(v), dst = ac.createMediaStreamDestination();
-        srcN.connect(dst);
-        dst.stream.getAudioTracks().forEach(t => stream.addTrack(t));
-        if (ac.state === "suspended") await ac.resume();
-      } catch (x) { ac = null; }
-      const types = ["video/webm;codecs=vp8,opus", "video/webm;codecs=vp9,opus", "video/webm", "video/mp4"];
-      const mime = types.find(t => MediaRecorder.isTypeSupported(t)) || "";
-      rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 240000, audioBitsPerSecond: 32000 } : { videoBitsPerSecond: 240000 });
-      const chunks = [];
-      rec.ondataavailable = ev => { if (ev.data && ev.data.size) chunks.push(ev.data); };
-      rec.onstop = () => {
-        if (done) return; done = true; clean();
-        const blob = new Blob(chunks, { type: (rec.mimeType || mime || "video/webm").split(";")[0] });
-        if (!blob.size) return reject(new Error("Video: nothing was recorded. Try again."));
-        if (blob.size > 600000) return reject(new Error("Video: this clip is too big. Try a simpler or shorter clip."));
-        const fr = new FileReader();
-        fr.onload = () => resolve({ data: fr.result, thumb: thumb });
-        fr.onerror = () => reject(new Error("read"));
-        fr.readAsDataURL(blob);
-      };
-      let stopped = false;
-      const stopNow = () => { if (!stopped) { stopped = true; try { rec.stop(); } catch (x) {} try { v.pause(); } catch (x) {} } };
-      const loop = () => {
-        if (done || stopped) return;
-        g.drawImage(v, 0, 0, w, h);
-        progress(Math.floor(v.currentTime) + "/" + Math.round(dur) + "s");
-        if (v.currentTime >= dur - 0.05 || v.ended) { stopNow(); return; }
-        requestAnimationFrame(loop);
-      };
-      rec.start(300);
-      try { await v.play(); } catch (x) { return fail("Video: tap the video button again to allow playing."); }
-      requestAnimationFrame(loop);
-      setTimeout(stopNow, (dur + 3) * 1000);
-    } catch (err) { fail("Could not prepare this video."); }
-  });
-}
 function drawComposer() {
   const txt = $("jText").value;
   const cols = $("jColors"), prev = $("jPrev"), th = $("jThumbs");
@@ -765,11 +774,12 @@ async function doPost() {
   const btn = $("jPost"); btn.disabled = true; msg.textContent = "Posting...";
   stopPreview();
   try {
-    await addDoc(collection(db, "posts"), {
+    const ref = await addDoc(collection(db, "posts"), {
       uid: me.uid, name: myProf().gameName, text: text, img: cImgs[0] || "", imgs: cImgs.slice(),
       bg: (cImgs.length || cVideo) ? "" : cBg, video: cVideo ? cVideo.data : "", vthumb: cVideo ? cVideo.thumb : "", category: $("jCat").value, music: $("jMusic").value,
       time: serverTimestamp(), likes: [], fires: [], commentCount: 0
     });
+    try { notifyMentions(text, ref.id); } catch (x) {}
     $("jText").value = ""; cImgs = []; cVideo = null; $("jMusic").value = "";
     drawComposer(); msg.textContent = ""; toast("Posted ✅");
   } catch (e) { msg.textContent = "Could not post. Try fewer pictures."; }
@@ -1012,6 +1022,7 @@ function renderAll() {
   try { renderFYP(); } catch (e) { console.error(e); }
   try { renderMe(); } catch (e) { console.error(e); }
   try { renderUserView(); } catch (e) { console.error(e); }
+  try { if (tagNow) renderTag(); } catch (e) { console.error(e); }
 }
 let ready = false;
 function prepare() {
@@ -1032,6 +1043,7 @@ function prepare() {
   $("userBox").parentNode.insertBefore(ju, $("userBox").nextSibling);
   new MutationObserver(adoptUser).observe($("userBox"), { childList: true });
   buildCommentSheet();
+  buildTagSheet();
   buildPrivacy();
   buildNewBtn();
   hookCamera();
