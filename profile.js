@@ -262,6 +262,51 @@ function toggleMute() {
 }
 function checkCur() { if (cur && !document.querySelector('[data-mid="' + cur.id + '"]')) stopMusic(); }
 
+
+// ---------- polls, post reactions, notes ----------
+const PREACTS = ["❤️", "😂", "😮", "😢", "😡"];
+const hx = document.createElement("style");
+hx.textContent = ".jpoll{margin:8px 0;display:flex;flex-direction:column;gap:7px}.jpo{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:12px;padding:11px 12px;background:var(--card);color:var(--tx);font-size:15px;text-align:left;width:100%;margin:0;display:flex;justify-content:space-between;gap:8px}.jpo i{position:absolute;left:0;top:0;bottom:0;background:rgba(29,155,240,.28);z-index:0}.jpo span{position:relative;z-index:1}.jpo.mine{border-color:#1d9bf0}.jpn{font-size:12px;color:var(--mut);padding:0 2px}.jpr{display:flex;gap:12px;padding:6px 4px;font-size:26px}.jrx{font-size:14px;padding:2px 4px}.jnote{display:inline-block;margin:8px auto 0;padding:7px 14px;border-radius:16px;background:var(--card);border:1px solid var(--line);font-size:14px;max-width:90%;word-wrap:break-word}.jpb{border:1px solid var(--line);border-radius:14px;padding:10px;margin:8px 0}.jpb input{width:100%;margin:4px 0}";
+document.head.appendChild(hx);
+async function votePoll(p, i) {
+  try { await updateDoc(doc(db, "posts", p.id), { ["votes." + me.uid]: i }); }
+  catch (e) { toast("Could not vote. Ask Claude for the poll rule."); }
+}
+function pollBox(p) {
+  const box = mk("div", "jpoll");
+  const votes = p.votes || {};
+  const mine = votes[me.uid];
+  const total = Object.keys(votes).length;
+  const shown = mine !== undefined || p.uid === me.uid;
+  p.poll.forEach((o, i) => {
+    const n = Object.values(votes).filter(v => v === i).length;
+    const b = mk("button", "jpo" + (mine === i ? " mine" : "")); b.type = "button";
+    if (shown) { const bar = mk("i"); bar.style.width = (total ? Math.round(n * 100 / total) : 0) + "%"; b.appendChild(bar); }
+    b.appendChild(mk("span", "", o));
+    if (shown) b.appendChild(mk("span", "", (total ? Math.round(n * 100 / total) : 0) + "%"));
+    b.onclick = e => { e.stopPropagation(); if (mine === undefined && p.uid !== me.uid) votePoll(p, i); else toast(p.uid === me.uid ? "You made this poll." : "You already voted."); };
+    box.appendChild(b);
+  });
+  box.appendChild(mk("div", "jpn", total + (total === 1 ? " vote" : " votes")));
+  return box;
+}
+async function reactPost(p, emoji) {
+  try {
+    const same = p.pr && p.pr[me.uid] === emoji;
+    await updateDoc(doc(db, "posts", p.id), { ["pr." + me.uid]: same ? deleteField() : emoji });
+    if (!same) notify(p.uid, "like", p.id, "");
+  } catch (e) { toast("Could not react. Ask Claude for the reaction rule."); }
+}
+async function saveNote() {
+  if (!myProf()) { toast("Save your profile first."); return; }
+  const t = prompt("Write a note (60 letters, shows for 24 hours). Leave empty to remove it.", "");
+  if (t === null) return;
+  const text = t.trim().slice(0, 60);
+  try { await updateDoc(doc(db, "players", me.uid), { note: text ? { text: text, at: Date.now() } : deleteField() }); toast(text ? "Note saved 📝" : "Note removed"); }
+  catch (e) { toast("Could not save the note."); }
+}
+const noteOf = p => (p && p.note && p.note.text && Date.now() - p.note.at < 86400000) ? p.note.text : "";
+
 // ---------- post card ----------
 async function react(p, field, on) {
   try {
@@ -377,6 +422,7 @@ function postCard(p, opt) {
     c.appendChild(dots);
   }
   c.appendChild(tt);
+  if (p.poll && p.poll.length) c.appendChild(pollBox(p));
 
   const song = p.music && MUSIC.find(m => m[0] === p.music);
   if (song) {
@@ -394,7 +440,15 @@ function postCard(p, opt) {
   const fb = mk("button", "ibtn fireBtn" + (f ? " on" : ""), "🔥"); fb.type = "button"; fb.onclick = e => { e.stopPropagation(); react(p, "fires", f); };
   const sb = mk("button", "ibtn"); sb.type = "button"; sb.title = "Send to a friend"; sb.innerHTML = ICON_SEND;
   sb.onclick = e => { e.stopPropagation(); if (window.joltSharePost) window.joltSharePost({ id: p.id, uid: p.uid, name: p.name, text: p.text || (hasVid ? "🎬 Video" : ""), img: imgs[0] || p.vthumb || "" }); else toast("Chat is still loading. Try again in a moment."); };
-  acts.appendChild(hb); acts.appendChild(cb); acts.appendChild(fb); acts.appendChild(sb);
+  const rxb = mk("button", "ibtn", (p.pr && p.pr[me.uid]) || "😊"); rxb.type = "button"; rxb.title = "React";
+  rxb.onclick = e => {
+    e.stopPropagation();
+    const old = c.querySelector(".jpr"); if (old) { old.remove(); return; }
+    const pk = mk("div", "jpr");
+    PREACTS.forEach(em => { const sp = mk("span", "", em); sp.onclick = ev => { ev.stopPropagation(); pk.remove(); reactPost(p, em); }; pk.appendChild(sp); });
+    acts.after(pk);
+  };
+  acts.appendChild(hb); acts.appendChild(cb); acts.appendChild(fb); acts.appendChild(rxb); acts.appendChild(sb);
   c.appendChild(acts);
   if (likes.length || fires.length) {
     const parts = [];
@@ -402,6 +456,9 @@ function postCard(p, opt) {
     if (fires.length) parts.push("🔥 " + fires.length);
     c.appendChild(mk("div", "counts", parts.join("  ·  ")));
   }
+  const prc = {}; Object.values(p.pr || {}).forEach(em => { prc[em] = (prc[em] || 0) + 1; });
+  const prs = Object.keys(prc).map(em => em + " " + prc[em]).join("   ");
+  if (prs) c.appendChild(mk("div", "jrx", prs));
   if (p.text && (imgs.length || hasVid)) {
     const cap = mk("div", "caption"); cap.appendChild(mk("b", "", (p.name || "Player") + " ")); linkify(cap, p.text); c.appendChild(cap);
   }
@@ -622,6 +679,7 @@ function buildComposer() {
     + '<input id="jVidFile" type="file" accept="video/*" class="hidden"><input id="jRecFile" type="file" accept="video/*" capture="environment" class="hidden"><div id="jVidPrev"></div>'
     + '<div class="jrow"><select id="jMusic"></select><button id="jListen" class="ghost" type="button">▶ Listen</button></div>'
     + '<div class="jrow"><select id="jCat"><option value="gaming">🎮 Gaming</option><option value="lifestyle">🌍 Lifestyle</option><option value="fun">😂 Fun</option></select></div>'
+    + '<div class="jrow"><button id="jPollBtn" class="ghost" type="button">📊 Add poll</button></div><div id="jPollBox"></div>'
     + '<button id="jPost" class="green" type="button">Post</button><div id="jMsg" class="mut"></div>';
   const meProfile = $("meProfile");
   meProfile.parentNode.insertBefore(card, meProfile.nextSibling);
@@ -657,7 +715,24 @@ function buildComposer() {
   $("jVidFile").onchange = e => pickVideo(e);
   $("jRecFile").onchange = e => pickVideo(e);
   $("jPost").onclick = doPost;
+  $("jPollBtn").onclick = () => { pollOpts = pollOpts ? null : ["", ""]; drawPoll(); };
   drawComposer();
+}
+let pollOpts = null;
+function drawPoll() {
+  const box = $("jPollBox"); if (!box) return;
+  box.innerHTML = "";
+  $("jPollBtn").textContent = pollOpts ? "✕ Remove poll" : "📊 Add poll";
+  if (!pollOpts) return;
+  const w = mk("div", "jpb");
+  w.appendChild(mk("div", "jpn", "Your post text is the question. Add 2 to 4 answers:"));
+  pollOpts.forEach((v, i) => {
+    const inp = mk("input"); inp.maxLength = 40; inp.placeholder = "Answer " + (i + 1); inp.value = v;
+    inp.oninput = () => { pollOpts[i] = inp.value; };
+    w.appendChild(inp);
+  });
+  if (pollOpts.length < 4) { const ad = mk("button", "ghost", "+ Add answer"); ad.type = "button"; ad.onclick = () => { pollOpts.push(""); drawPoll(); }; w.appendChild(ad); }
+  box.appendChild(w);
 }
 
 // ---------- 30-second videos ----------
@@ -768,6 +843,12 @@ async function doPost() {
   if (!text && !cImgs.length && !cVideo) { msg.textContent = "Write something, or add a picture or video."; return; }
   if (vidBusy) { msg.textContent = "Wait, the video is still getting ready."; return; }
   if (!myProf()) { msg.textContent = "Save your profile first (tap Edit profile)."; return; }
+  let poll = null;
+  if (pollOpts) {
+    poll = pollOpts.map(x => x.trim()).filter(Boolean);
+    if (!text) { msg.textContent = "Write the poll question in the post box."; return; }
+    if (poll.length < 2) { msg.textContent = "A poll needs at least 2 answers."; return; }
+  }
   const total = cImgs.reduce((n, s) => n + s.length, 0);
   if (cVideo && cVideo.data.length + cVideo.thumb.length > 900000) { msg.textContent = "This video is too big. Try a shorter clip."; return; }
   if (total > 950000) { msg.textContent = "Pictures are too big together. Remove one."; return; }
@@ -777,10 +858,10 @@ async function doPost() {
     const ref = await addDoc(collection(db, "posts"), {
       uid: me.uid, name: myProf().gameName, text: text, img: cImgs[0] || "", imgs: cImgs.slice(),
       bg: (cImgs.length || cVideo) ? "" : cBg, video: cVideo ? cVideo.data : "", vthumb: cVideo ? cVideo.thumb : "", category: $("jCat").value, music: $("jMusic").value,
-      time: serverTimestamp(), likes: [], fires: [], commentCount: 0
+      time: serverTimestamp(), likes: [], fires: [], commentCount: 0, ...(poll ? { poll: poll, votes: {} } : {})
     });
     try { notifyMentions(text, ref.id); } catch (x) {}
-    $("jText").value = ""; cImgs = []; cVideo = null; $("jMusic").value = "";
+    $("jText").value = ""; cImgs = []; cVideo = null; $("jMusic").value = ""; pollOpts = null; drawPoll();
     drawComposer(); msg.textContent = ""; toast("Posted ✅");
   } catch (e) { msg.textContent = "Could not post. Try fewer pictures."; }
   btn.disabled = false;
@@ -850,6 +931,7 @@ function buildProfile(box, p, isMe, actsNode) {
   const nm = mk("div", "profName"); nm.appendChild(nameEl(p.gameName, p.uid)); body.appendChild(nm);
   body.appendChild(mk("div", "profSub", (isOnline(p) ? "🟢 Online now" : "⚫ Offline") + "  ·  " + (p.game || "Member")));
   if (p.uid === ownerUid) body.appendChild(mk("div", "profFounder", "👑 Founder of Jolt"));
+  if (noteOf(p)) body.appendChild(mk("div", "jnote", "📝 " + noteOf(p)));
   const st = mk("div", "profStats");
   st.appendChild(stat(followingOf(p).length, "Following")); st.appendChild(stat(fol, "Followers")); st.appendChild(stat(likesN, "Likes"));
   body.appendChild(st);
@@ -857,7 +939,8 @@ function buildProfile(box, p, isMe, actsNode) {
   if (isMe) {
     const eb = mk("button", "sm green", "✏️ Edit profile"); eb.onclick = () => { const s = $("mSettings"); if (s) s.click(); };
     const cb = mk("button", "sm ghost", "🖼 Cover photo"); cb.onclick = () => $("jCoverFile").click();
-    acts.appendChild(eb); acts.appendChild(cb);
+    const nb = mk("button", "sm ghost", "📝 Note"); nb.onclick = saveNote;
+    acts.appendChild(eb); acts.appendChild(cb); acts.appendChild(nb);
     const cf = mk("input"); cf.type = "file"; cf.accept = "image/*"; cf.className = "hidden"; cf.id = "jCoverFile";
     cf.onchange = async e => {
       const f = e.target.files[0]; if (!f) return;
