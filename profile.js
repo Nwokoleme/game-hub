@@ -273,14 +273,15 @@ function postCard(p, opt) {
   if (opt.profile && mine) c.appendChild(mk("div", "jdate", "Posted " + dateTimeText(p)));
 
   const imgs = imgsOf(p);
-  const hasVid = !!(p.video && String(p.video).indexOf("data:video/") === 0);
+  const hasVid = !!(p.video && (String(p.video).indexOf("data:video/") === 0 || String(p.video).indexOf("https://res.cloudinary.com/") === 0));
   const body = mk("div", "pbody");
   body.style.position = "relative";
   let carEl = null;
   if (hasVid) {
     const vw = mk("div", "jvid");
     const v = document.createElement("video");
-    v.src = p.video; v.controls = true; v.playsInline = true; v.loop = true; v.preload = "metadata";
+    v.src = vidSrc(p.video); v.controls = true; v.playsInline = true; v.loop = true; v.preload = "metadata";
+    v.onerror = () => { if (v.dataset.fb !== "1") { v.dataset.fb = "1"; v.src = p.video; } };
     if (p.vthumb) v.poster = p.vthumb;
     v.onplay = () => { document.querySelectorAll(".jvid video").forEach(o => { if (o !== v) o.pause(); }); };
     vw.appendChild(v); body.appendChild(vw);
@@ -584,7 +585,7 @@ function buildComposer() {
   drawComposer();
 }
 
-// ---------- 12-second videos: shrink the clip on the phone so it fits in the database ----------
+// ---------- 12-second videos ----------
 async function pickVideo(e) {
   const f = e.target.files[0]; e.target.value = "";
   if (!f || vidBusy) return;
@@ -593,7 +594,7 @@ async function pickVideo(e) {
   try {
     cVideo = null; cImgs = [];
     msg.textContent = "Preparing video...";
-    cVideo = await makeVideo(f, t => { msg.textContent = "Preparing video... " + t; });
+    cVideo = await uploadVideo(f, t => { msg.textContent = "Uploading video... " + t; });
     msg.textContent = "Video ready ✅";
   } catch (err) {
     cVideo = null;
@@ -601,6 +602,64 @@ async function pickVideo(e) {
   }
   vidBusy = false; $("jPost").disabled = false;
   drawComposer();
+}
+// ---------- videos are saved in Cloudinary (free), only the link goes in the database ----------
+const CLOUD_NAME = "a5mxtmbv";
+const CLOUD_PRESET = "jolt_videos";
+function vidSrc(u) {
+  u = String(u || "");
+  if (u.indexOf("https://res.cloudinary.com/") === 0 && u.indexOf("/video/upload/") > -1 && u.indexOf("q_auto") === -1) {
+    return u.replace("/video/upload/", "/video/upload/f_mp4,vc_h264,q_auto,w_720,c_limit/");
+  }
+  return u;
+}
+function videoThumb(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const v = document.createElement("video");
+    let fin = false;
+    const end = (thumb) => { if (fin) return; fin = true; try { URL.revokeObjectURL(url); } catch (x) {} resolve(thumb || ""); };
+    v.muted = true; v.playsInline = true; v.preload = "auto"; v.src = url;
+    v.onerror = () => end("");
+    v.onloadedmetadata = () => {
+      const dur = v.duration;
+      if (isFinite(dur) && dur > 12.5) { fin = true; try { URL.revokeObjectURL(url); } catch (x) {} return reject(new Error("Video: please pick a clip of 12 seconds or less.")); }
+      try { v.currentTime = Math.min(0.4, (isFinite(dur) && dur > 0 ? dur : 1) / 3); } catch (x) { end(""); }
+    };
+    v.onseeked = () => {
+      try {
+        const sc = Math.min(1, 240 / Math.max(v.videoWidth, v.videoHeight));
+        const c = document.createElement("canvas");
+        c.width = Math.max(2, Math.round(v.videoWidth * sc)); c.height = Math.max(2, Math.round(v.videoHeight * sc));
+        c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
+        end(c.toDataURL("image/jpeg", 0.6));
+      } catch (x) { end(""); }
+    };
+    setTimeout(() => end(""), 6000);
+  });
+}
+async function uploadVideo(file, progress) {
+  if (file.size > 40 * 1024 * 1024) throw new Error("Video: this clip is too big. Record a shorter one or use lower quality.");
+  progress("checking");
+  const thumb = await videoThumb(file);
+  const data = await new Promise((resolve, reject) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("upload_preset", CLOUD_PRESET);
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "https://api.cloudinary.com/v1_1/" + CLOUD_NAME + "/video/upload");
+    xhr.upload.onprogress = ev => { if (ev.lengthComputable) progress(Math.round(ev.loaded / ev.total * 100) + "%"); };
+    xhr.onerror = () => reject(new Error("Video: upload failed. Check your internet and try again."));
+    xhr.onload = () => {
+      try {
+        const r = JSON.parse(xhr.responseText);
+        if (xhr.status >= 200 && xhr.status < 300 && r.secure_url) return resolve(r.secure_url);
+        reject(new Error("Video: upload failed" + (r.error && r.error.message ? " (" + r.error.message + ")" : ".")));
+      } catch (x) { reject(new Error("Video: upload failed.")); }
+    };
+    xhr.send(fd);
+  });
+  return { data: data, thumb: thumb };
 }
 function makeVideo(file, progress) {
   return new Promise(async (resolve, reject) => {
