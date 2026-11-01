@@ -307,6 +307,54 @@ async function saveNote() {
 }
 const noteOf = p => (p && p.note && p.note.text && Date.now() - p.note.at < 86400000) ? p.note.text : "";
 
+
+// ---------- repost with a comment, trending hashtags ----------
+const rx = document.createElement("style");
+rx.textContent = ".jrp{border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin:8px 0;background:var(--card);cursor:pointer}.jrp b{font-size:13px;color:var(--mut)}.jrp p{margin:4px 0 0;font-size:15px;word-wrap:break-word}.jrp img{width:100%;max-height:220px;object-fit:cover;border-radius:10px;margin-top:6px;display:block}.jtrend{display:flex;gap:8px;overflow-x:auto;padding:0 0 10px;align-items:center}.jtrend span.l{font-size:13px;color:var(--mut);white-space:nowrap}.jtrend button{width:auto;margin:0;padding:6px 12px;border-radius:16px;background:var(--card);border:1px solid var(--line);color:#1d9bf0;font-size:14px;font-weight:600;white-space:nowrap}";
+document.head.appendChild(rx);
+async function repostPost(p) {
+  if (!myProf()) { toast("Save your profile first."); return; }
+  const t = prompt("Add your comment (you can leave it empty):", "");
+  if (t === null) return;
+  const text = t.trim().slice(0, 300);
+  const src = p.repost || { uid: p.uid, name: p.name, text: p.text || "", img: imgsOf(p)[0] || p.vthumb || "", postId: p.id };
+  try {
+    const small = src.img && String(src.img).length < 120000 ? src.img : "";
+    await addDoc(collection(db, "posts"), {
+      uid: me.uid, name: myProf().gameName, text: text, img: "", imgs: [], bg: "#111827", video: "", vthumb: "",
+      category: p.category || "gaming", music: "", time: serverTimestamp(), likes: [], fires: [], commentCount: 0,
+      repost: { uid: src.uid, name: src.name || "Player", text: String(src.text || "").slice(0, 150), img: small, postId: src.postId || p.id }
+    });
+    notify(src.uid, "comment", src.postId || p.id, "reposted your post");
+    try { notifyMentions(text, p.id); } catch (x) {}
+    toast("Reposted ✅ It is on your page.");
+  } catch (e) { toast("Could not repost. Ask Claude for the repost rule."); }
+}
+function repostBox(p) {
+  const r = p.repost;
+  const b = mk("div", "jrp");
+  b.appendChild(mk("b", "", "🔁 From " + (r.name || "Player")));
+  if (r.text) { const t = mk("p"); linkify(t, r.text); b.appendChild(t); }
+  if (r.img) { const im = mk("img"); im.src = r.img; im.draggable = false; b.appendChild(im); }
+  b.onclick = e => { e.stopPropagation(); closeTag(); if (window.joltOpenPost) window.joltOpenPost(r.postId); };
+  return b;
+}
+function trendBar() {
+  const cnt = {};
+  posts.forEach(p => {
+    if (postsHidden(p.uid)) return;
+    const seen = new Set();
+    String(p.text || "").replace(TAGONE, (m, t) => { seen.add(t.toLowerCase()); return m; });
+    seen.forEach(t => { cnt[t] = (cnt[t] || 0) + 1; });
+  });
+  const top = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a]).slice(0, 8);
+  if (!top.length) return null;
+  const bar = mk("div", "jtrend");
+  bar.appendChild(mk("span", "l", "🔥 Trending"));
+  top.forEach(t => { const b = mk("button", "", "#" + t + " · " + cnt[t]); b.type = "button"; b.onclick = () => openTag(t); bar.appendChild(b); });
+  return bar;
+}
+
 // ---------- post card ----------
 async function react(p, field, on) {
   try {
@@ -362,6 +410,7 @@ function postCard(p, opt) {
   const menu = mk("div", "pmenu hidden");
   const addItem = (txt, cls, fn) => { const d = mk("div", cls, txt); d.onclick = e => { e.stopPropagation(); menu.classList.add("hidden"); fn(); }; menu.appendChild(d); };
   if (mine) addItem(pinned ? "📌 Unpin" : "📌 Pin to my page", "", () => togglePin(p));
+  if (!mine) addItem("🔁 Repost with comment", "", () => repostPost(p));
   if (canRep) addItem("🚩 Report", "", () => reportPost(p));
   if (canDel) addItem("🗑 Delete", "red", () => delPost(p));
   more.onclick = e => { e.stopPropagation(); menu.classList.toggle("hidden"); };
@@ -423,6 +472,7 @@ function postCard(p, opt) {
   }
   c.appendChild(tt);
   if (p.poll && p.poll.length) c.appendChild(pollBox(p));
+  if (p.repost) c.appendChild(repostBox(p));
 
   const song = p.music && MUSIC.find(m => m[0] === p.music);
   if (song) {
@@ -536,6 +586,7 @@ function renderFYP() {
     bar.appendChild(b);
   });
   box.appendChild(bar);
+  const tb = trendBar(); if (tb) box.appendChild(tb);
   const ok = circle();
   const list = posts.filter(p => p.uid !== me.uid && !heldIds.has(p.id) && !postsHidden(p.uid) && (ok.has(p.uid) || p.uid === ownerUid) && (feedCat === "all" || (p.category || "gaming") === feedCat));
   if (!list.length) { box.appendChild(mk("div", "card mut", "Nothing here yet. Follow people, or search a name and add friends, to fill your For You page.")); checkCur(); return; }
