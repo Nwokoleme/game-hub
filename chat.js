@@ -289,7 +289,7 @@ const STICKERS = [
     if (!me) return;
     hub.innerHTML = "";
     const head = mk("div", "chHead");
-    head.appendChild(mk("h2", "", "💬 Chats"));
+    head.appendChild(mk("h2", "", "Messages"));
     hub.appendChild(head);
 
     const bar = mk("div", "chBtns");

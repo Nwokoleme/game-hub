@@ -21,7 +21,7 @@ const ICON_SEND = svg('<path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z
 const ICON_CMT = svg('<path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.6-.8L3 21l1.9-5.3A8.4 8.4 0 1 1 21 11.5z"/>');
 
 let me = null, players = [], posts = [], reqs = [], ownerUid = "";
-let unsubs = [], feedCat = "all", tm = null, feedN = 10;
+let unsubs = [], feedCat = "all", tm = null, feedN = 6;
 let muted = false;
 try { muted = localStorage.getItem("jmute") === "1"; } catch (e) {}
 
@@ -591,7 +591,7 @@ function renderFYP() {
   if (!list.length) { box.appendChild(mk("div", "card mut", "Nothing here yet. Follow people, or search a name and add friends, to fill your For You page.")); checkCur(); return; }
   const shownList = list.slice(0, feedN);
   shownList.forEach(p => box.appendChild(postCard(p)));
-  if (list.length > shownList.length) { const mb = mk("button", "ghost", "Show more posts"); mb.type = "button"; mb.onclick = () => { feedN += 10; renderFYP(); }; box.appendChild(mb); }
+  if (list.length > shownList.length) { const mb = mk("button", "ghost", "Show more posts"); mb.type = "button"; mb.onclick = () => { feedN += 6; renderFYP(); }; box.appendChild(mb); }
   checkCur();
 }
 
@@ -1320,7 +1320,7 @@ onAuthStateChanged(auth, user => {
   if (!me) return;
   prepare();
   unsubs.push(onSnapshot(collection(db, "players"), snap => { players = snap.docs.map(d => ({ uid: d.id, ...d.data() })); schedule(); }, () => {}));
-  unsubs.push(onSnapshot(query(collection(db, "posts"), orderBy("time", "desc"), limit(60)), snap => { posts = snap.docs.map(d => ({ id: d.id, ...d.data() })); trackNew(); schedule(); }, () => {}));
+  unsubs.push(onSnapshot(query(collection(db, "posts"), orderBy("time", "desc"), limit(15)), snap => { posts = snap.docs.map(d => ({ id: d.id, ...d.data() })); trackNew(); schedule(); }, () => {}));
   unsubs.push(onSnapshot(query(collection(db, "requests"), where("participants", "array-contains", me.uid)), snap => { reqs = snap.docs.map(d => ({ id: d.id, ...d.data() })); schedule(); }, () => {}));
   unsubs.push(onSnapshot(doc(db, "config", "owner"), d => { const v = d.data(); ownerUid = (v && v.uid) || ""; schedule(); }, () => {}));
 });
