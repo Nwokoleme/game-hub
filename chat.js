@@ -4,10 +4,11 @@
    requests, groups with name, disappearing messages (24h), read receipts switch.
    New in v2: emoji, stickers (built-in + your own pictures), photos, voice notes,
    message reactions, copy, delete, share a post to a chat, block and report.
-   v2.1: bold text (tap B, or type *text*). */
+   v2.1: bold text (tap B, or type *text*).
+   v3: wallpaper colors + chat color picker, WhatsApp-style voice notes, search bar on For You. */
 import { getApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, updateDoc, addDoc, deleteDoc, collection, query, where, orderBy, limit, onSnapshot, serverTimestamp, arrayRemove, arrayUnion, deleteField } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, getDocs, doc, setDoc, updateDoc, addDoc, deleteDoc, collection, query, where, orderBy, limit, onSnapshot, serverTimestamp, arrayRemove, arrayUnion, deleteField } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 function ready() {
   return new Promise(res => {
@@ -125,6 +126,46 @@ const STICKERS = [
 #chSheet label.gp{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--line);font-size:16px}
 #chSheet label.gp input{width:22px;height:22px;margin:0;flex:none}
 #chSheet .gl{max-height:34vh;overflow-y:auto;margin:8px 0}
+
+#cx.hasWp .cxNote.day{background:rgba(0,0,0,.45);color:#fff}
+#cx .cxMsg.mine .cxB{background:var(--cx-me-bg,var(--me-bg));color:var(--cx-me-tx,#fff)}
+#cx .cxMsg:not(.mine) .cxB{background:var(--cx-th-bg,var(--in-bg));color:var(--cx-th-tx,var(--tx))}
+#cx .cxB.bare{background:none!important;box-shadow:none}
+#cx .cxMsg:not(.mine) .cxB.bare{color:var(--tx)}
+#cx .cxBar #cxMic{width:46px;height:46px;background:#25d366;color:#fff;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;transition:transform .12s}
+#cx .cxBar #cxMic.recOn{width:46px;padding:0;border-radius:50%;background:#f4212e;font-size:19px;transform:scale(1.08)}
+#cx .cxBar #cxMic.recOn.hold{transform:scale(1.4)}
+#cxRecBar{flex:1;display:flex;align-items:center;gap:10px;padding:0 8px;color:var(--tx);min-width:0}
+#cxRecBar .rdot{width:11px;height:11px;border-radius:50%;background:#f4212e;animation:rdp 1s infinite;flex:none}
+@keyframes rdp{50%{opacity:.2}}
+#cxRecT{font-weight:800;font-size:17px}
+#cxRecH{color:var(--mut);font-size:14px;margin-left:auto;white-space:nowrap}
+#cx .vn{display:flex;align-items:center;gap:10px;min-width:215px}
+#cx .vnP{flex:none;width:42px;height:42px;border-radius:50%;padding:0;margin:0;border:none;display:flex;align-items:center;justify-content:center;background:#25d366;color:#fff}
+#cx .cxMsg.mine .vnP{background:#fff;color:#128c4a}
+#cx .vnM{flex:1;min-width:0}
+#cx .vnW{display:flex;align-items:center;gap:2px;height:30px;cursor:pointer}
+#cx .vnW i{display:block;width:3px;border-radius:2px;background:currentColor;opacity:.35;flex:none}
+#cx .vnW i.on{opacity:1}
+#cx .vnT{font-size:11px;opacity:.75;margin-top:1px}
+#chSheet .clr{display:flex;align-items:center;justify-content:space-between;padding:10px 4px;border-bottom:1px solid var(--line);font-size:16px}
+#chSheet .clr input{width:60px!important;height:38px;padding:0!important;margin:0!important;border:none;background:none}
+#jSrch{padding:8px 14px 4px;background:var(--bg)}
+#jSrch .jsIn{display:flex;align-items:center;gap:10px;background:var(--inp);color:var(--mut);border-radius:24px;padding:11px 16px;font-size:15px;cursor:text}
+#jSrchP{position:fixed;inset:0;z-index:48;background:var(--bg);color:var(--tx);display:flex;flex-direction:column;height:100dvh}
+#jSrchP.hidden{display:none}
+#jSrchP .jsHead{display:flex;gap:8px;align-items:center;padding:calc(env(safe-area-inset-top,0px) + 8px) 10px 8px;border-bottom:1px solid var(--line)}
+#jSrchP .jsHead button{width:40px;height:40px;padding:0;margin:0;border-radius:50%;background:transparent;color:var(--tx);border:none;font-size:20px;flex:none}
+#jSrchP .jsHead input{flex:1;margin:0;border-radius:24px;padding:11px 16px;min-width:0}
+#jsRes{flex:1;overflow-y:auto;padding:4px 12px 30px}
+#jsRes .jsH{font-size:17px;font-weight:800;padding:14px 2px 6px}
+#jsRes .jsRow{display:flex;align-items:center;gap:12px;padding:10px 2px;border-bottom:1px solid var(--line);cursor:pointer}
+#jsRes .jsRow img{width:54px;height:54px;object-fit:cover;border-radius:10px;flex:none}
+#jsRes .jsMid{flex:1;min-width:0}
+#jsRes .jsMid b{display:block;font-size:15px}
+#jsRes .jsMid span{display:block;color:var(--mut);font-size:14px;max-height:2.7em;overflow:hidden}
+#jsRes .jsTags{display:flex;flex-wrap:wrap;gap:8px;padding:6px 0}
+#jsRes .jsTags button{width:auto;margin:0;padding:8px 14px;border-radius:20px;background:var(--inp);color:var(--tx);border:none;font-size:14px}
 `;
   document.head.appendChild(css);
 
@@ -137,7 +178,7 @@ const STICKERS = [
   const cxEl = mk("div", "hidden"); cxEl.id = "cx";
   cxEl.innerHTML = '<div class="cxHead"><button id="cxBack" type="button" aria-label="Back">←</button><div id="cxAv"></div><div class="cxT"><b id="cxTitle"></b><span id="cxSub"></span></div><button id="cxMenu" type="button" aria-label="Options">⋯</button></div>' +
     '<div id="cxLog"></div><div id="cxLock" class="hidden"></div><div id="cxPanel" class="hidden"></div>' +
-    '<div class="cxBar"><button id="cxEmo" type="button" aria-label="Emoji and stickers">😊</button><button id="cxBold" type="button" aria-label="Bold text">B</button><input id="cxInput" placeholder="Type a message" maxlength="500" autocomplete="off"><button id="cxAtt" type="button" aria-label="Send a photo">📎</button><button id="cxRecX" class="hidden" type="button" aria-label="Cancel voice note">✕</button><button id="cxMic" type="button" aria-label="Voice note">🎤</button><button id="cxSend" class="hidden" type="button" aria-label="Send">➤</button></div>';
+    '<div class="cxBar"><button id="cxEmo" type="button" aria-label="Emoji and stickers">😊</button><button id="cxBold" type="button" aria-label="Bold text">B</button><input id="cxInput" placeholder="Type a message" maxlength="500" autocomplete="off"><button id="cxAtt" type="button" aria-label="Send a photo">📎</button><div id="cxRecBar" class="hidden"><i class="rdot"></i><span id="cxRecT">0:00</span><span id="cxRecH">‹ Slide to cancel</span></div><button id="cxRecX" class="hidden" type="button" aria-label="Cancel voice note">🗑</button><button id="cxMic" type="button" aria-label="Voice note">🎤</button><button id="cxSend" class="hidden" type="button" aria-label="Send">➤</button></div>';
   document.body.appendChild(cxEl);
   const sheet = mk("div", "hidden"); sheet.id = "chSheet";
   document.body.appendChild(sheet);
@@ -444,6 +485,7 @@ const STICKERS = [
     $("cxPanel").classList.add("hidden"); panelMode = "";
     syncBtn();
     cxEl.classList.remove("hidden");
+    applyTheme();
     const q = query(collection(db, ...pathOf(ctx)), orderBy("time", "desc"), limit(150));
     cx.unsubs.push(onSnapshot(q, snap => {
       cx.msgs = snap.docs.map(d => ({ id: d.id, ...d.data() })).reverse();
@@ -456,6 +498,7 @@ const STICKERS = [
   function closeChat(silent) {
     if (rec && rec.state === "recording") { sendIt = false; try { rec.stop(); } catch (e) {} } else recReset();
     if (cx) { cx.unsubs.forEach(u => u()); cx = null; }
+    try { Object.keys(voiceCache).forEach(k => { voiceCache[k].au.pause(); delete voiceCache[k]; }); } catch (e) {}
     cxEl.classList.add("hidden");
     $("cxPanel").classList.add("hidden"); panelMode = "";
     if (!silent) renderHub();
@@ -523,8 +566,7 @@ const STICKERS = [
       const b = mk("div", "cxB" + (bare ? " bare" : ""));
       if (!mine && cx.kind === "group") b.appendChild(mk("div", "cxN", m.from === "bot" ? "🤖 Assistant" : (nameOf(m.from) !== "Player" ? nameOf(m.from) : (m.name || "Player"))));
       if (t.indexOf("[v]") === 0) {
-        const au = document.createElement("audio"); au.controls = true; au.preload = "metadata"; au.src = t.slice(3);
-        b.appendChild(mk("div", "", "🎤 Voice note")); b.appendChild(au);
+        b.appendChild(buildVoice(m.id || String(ms), t.slice(3)));
       } else if (t.indexOf("[s]") === 0) {
         const parts = t.slice(3).split("|");
         const st = mk("div", "", parts[0]); st.style.fontSize = "52px"; st.style.textAlign = "center";
@@ -672,6 +714,7 @@ const STICKERS = [
     $("cxEmo").classList.toggle("hidden", recording);
     $("cxBold").classList.toggle("hidden", recording);
     $("cxInput").classList.toggle("hidden", recording);
+    $("cxRecBar").classList.toggle("hidden", !recording);
   }
   $("cxSend").onclick = sendMsg;
   $("cxInput").addEventListener("input", syncBtn);
@@ -772,21 +815,75 @@ const STICKERS = [
     readImage(f, 900, 170000, data => sendSpecial("[i]" + data));
   };
 
-  // ---------- voice notes ----------
+  // ---------- voice notes (WhatsApp style) ----------
+  const MIC = '<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V22h2v-3.1A7 7 0 0 0 19 12h-2z"/></svg>';
+  const SENDI = '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>';
+  const PLAYI = '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+  const PAUSEI = '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>';
+  const mmss = n => Math.floor(n / 60) + ":" + String(Math.floor(n % 60)).padStart(2, "0");
+  const voiceCache = {};
+  function seedOf(str) { let h = 7; for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0; return Math.abs(h) + 1; }
+  function buildVoice(id, src) {
+    const w = mk("div", "vn");
+    const pb = mk("button", "vnP"); pb.type = "button"; pb.innerHTML = PLAYI;
+    const mid = mk("div", "vnM"), wave = mk("div", "vnW"), tm = mk("div", "vnT", "0:00");
+    const bars = [];
+    let seed = seedOf(String(id));
+    for (let k = 0; k < 28; k++) {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      const i = mk("i"); i.style.height = (6 + (seed % 1000) / 1000 * 20) + "px";
+      bars.push(i); wave.appendChild(i);
+    }
+    mid.appendChild(wave); mid.appendChild(tm); w.appendChild(pb); w.appendChild(mid);
+    let c = voiceCache[id];
+    if (!c) { const a = new Audio(); a.preload = "metadata"; a.src = src; c = voiceCache[id] = { au: a, dur: 0, fix: false }; }
+    const au = c.au;
+    const total = () => (isFinite(au.duration) && au.duration > 0) ? au.duration : c.dur;
+    function paint() {
+      const d = total();
+      const p = d ? Math.min(1, au.currentTime / d) : 0;
+      bars.forEach((b, i) => b.classList.toggle("on", p > 0 && (i + 1) / bars.length <= p + 0.02));
+      tm.textContent = mmss(au.currentTime > 0 && !au.ended ? au.currentTime : d);
+      pb.innerHTML = au.paused ? PLAYI : PAUSEI;
+    }
+    function getDur() {
+      if (isFinite(au.duration) && au.duration > 0) { c.dur = au.duration; paint(); return; }
+      if (c.fix) return;
+      c.fix = true; au.currentTime = 1e101;
+      const f = () => { au.removeEventListener("timeupdate", f); au.currentTime = 0; c.fix = false; if (isFinite(au.duration)) c.dur = au.duration; paint(); };
+      au.addEventListener("timeupdate", f);
+    }
+    au.onloadedmetadata = getDur; au.ondurationchange = paint;
+    au.onplay = paint; au.onpause = paint; au.ontimeupdate = paint;
+    au.onended = () => { au.currentTime = 0; paint(); };
+    if (au.readyState >= 1) getDur(); else paint();
+    pb.onclick = () => {
+      if (au.paused) {
+        Object.keys(voiceCache).forEach(k => { if (voiceCache[k].au !== au) voiceCache[k].au.pause(); });
+        au.play().catch(() => toast("Could not play this voice note."));
+      } else au.pause();
+    };
+    wave.onclick = e => { const r = wave.getBoundingClientRect(), d = total(); if (d && r.width) { au.currentTime = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * d; paint(); } };
+    return w;
+  }
+
   let rec = null, chunks = [], stream = null, rtimer = null, secs = 0, sendIt = true, recTarget = null;
-  const mmss = n => Math.floor(n / 60) + ":" + String(n % 60).padStart(2, "0");
+  let locked = false, holding = false, downAt = 0, x0 = 0, starting = false, pendingUp = false, tapSend = false, recAt = 0;
+  const mic = $("cxMic"); mic.innerHTML = MIC;
+  mic.addEventListener("contextmenu", e => e.preventDefault());
   function recReset() {
     clearInterval(rtimer); rtimer = null; secs = 0;
     if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
-    $("cxMic").textContent = "🎤"; $("cxMic").classList.remove("recOn"); $("cxRecX").classList.add("hidden");
-    rec = null; chunks = [];
+    mic.innerHTML = MIC; mic.classList.remove("recOn", "hold");
+    $("cxRecX").classList.add("hidden"); $("cxRecBar").classList.add("hidden"); $("cxRecH").style.opacity = "1";
+    rec = null; chunks = []; locked = false; holding = false; starting = false; pendingUp = false; tapSend = false;
     syncBtn();
   }
   async function recStart() {
-    if (!cx) return;
-    if (!navigator.mediaDevices || !window.MediaRecorder) { toast("Voice notes do not work in this browser."); return; }
+    if (!cx) return false;
+    if (!navigator.mediaDevices || !window.MediaRecorder) { toast("Voice notes do not work in this browser."); return false; }
     try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
-    catch (e) { toast("Microphone is blocked. Allow the microphone for Jolt in your phone settings."); return; }
+    catch (e) { toast("Microphone is blocked. Allow the microphone for Jolt in your phone settings."); return false; }
     let type = "";
     ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"].some(t => { if (MediaRecorder.isTypeSupported(t)) { type = t; return true; } return false; });
     try { rec = new MediaRecorder(stream, type ? { mimeType: type, audioBitsPerSecond: 24000 } : { audioBitsPerSecond: 24000 }); }
@@ -795,9 +892,10 @@ const STICKERS = [
     chunks = []; sendIt = true;
     rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
     rec.onstop = () => {
-      const keep = sendIt, parts = chunks, mime = rec && rec.mimeType ? rec.mimeType : "audio/webm", target = recTarget;
+      const keep = sendIt, parts = chunks, mime = rec && rec.mimeType ? rec.mimeType : "audio/webm", target = recTarget, tooShort = (Date.now() - recAt) < 700;
       recReset();
       if (!keep || !parts.length || !target) return;
+      if (tooShort) { toast("Too short. Hold the button and speak, or tap once and speak."); return; }
       const blob = new Blob(parts, { type: mime });
       if (blob.size > 600000) { toast("That voice note is too long. Keep it under 1 minute."); return; }
       const fr = new FileReader();
@@ -805,19 +903,50 @@ const STICKERS = [
       fr.readAsDataURL(blob);
     };
     rec.start();
-    secs = 0;
-    $("cxMic").textContent = "⏹ 0:00"; $("cxMic").classList.add("recOn"); $("cxRecX").classList.remove("hidden");
+    secs = 0; recAt = Date.now();
+    mic.classList.add("recOn"); if (holding) mic.classList.add("hold");
+    $("cxRecT").textContent = "0:00"; $("cxRecH").textContent = "‹ Slide to cancel"; $("cxRecH").style.opacity = "1";
     hidePanel(); syncBtn();
+    try { if (navigator.vibrate) navigator.vibrate(18); } catch (e) {}
     rtimer = setInterval(() => {
       secs++;
-      $("cxMic").textContent = "⏹ " + mmss(secs);
-      if (secs >= 60 && rec && rec.state === "recording") rec.stop();
+      $("cxRecT").textContent = mmss(secs);
+      if (secs >= 60 && rec && rec.state === "recording") { sendIt = true; rec.stop(); }
     }, 1000);
+    return true;
   }
-  $("cxMic").onclick = () => {
-    if (rec && rec.state === "recording") { sendIt = true; rec.stop(); }
-    else recStart();
-  };
+  function handleUp(d) {
+    if (!rec || rec.state !== "recording") return;
+    if (d >= 500) { sendIt = true; rec.stop(); }
+    else { locked = true; mic.classList.remove("hold"); mic.innerHTML = SENDI; $("cxRecX").classList.remove("hidden"); $("cxRecH").textContent = "Recording... tap the arrow to send"; $("cxRecH").style.opacity = "1"; }
+  }
+  mic.addEventListener("pointerdown", async e => {
+    e.preventDefault();
+    if (rec && rec.state === "recording") { tapSend = true; return; }
+    if (starting) return;
+    holding = true; downAt = Date.now(); x0 = e.clientX; pendingUp = false; starting = true;
+    try { mic.setPointerCapture(e.pointerId); } catch (_) {}
+    const ok = await recStart();
+    starting = false;
+    if (!ok) { holding = false; return; }
+    if (pendingUp) { pendingUp = false; holding = false; handleUp(0); }
+  });
+  mic.addEventListener("pointermove", e => {
+    if (!holding || locked || !rec || rec.state !== "recording") return;
+    const dx = x0 - e.clientX;
+    $("cxRecH").style.opacity = String(Math.max(0.25, 1 - dx / 120));
+    if (dx > 110) { holding = false; sendIt = false; rec.stop(); toast("Voice note canceled"); }
+  });
+  function micUp() {
+    if (tapSend) { tapSend = false; if (rec && rec.state === "recording") { sendIt = true; rec.stop(); } return; }
+    if (!holding) return;
+    const d = Date.now() - downAt;
+    if (starting) { pendingUp = true; return; }
+    holding = false; mic.classList.remove("hold");
+    handleUp(d);
+  }
+  mic.addEventListener("pointerup", micUp);
+  mic.addEventListener("pointercancel", micUp);
   $("cxRecX").onclick = () => { sendIt = false; if (rec && rec.state === "recording") rec.stop(); else recReset(); };
 
   // ---------- share a post to a chat (used by the For You page) ----------
@@ -866,6 +995,11 @@ const STICKERS = [
       closeSheet();
     };
     box.appendChild(rr);
+    const wpo = mk("button", "opt", "🎨 Wallpaper"); wpo.type = "button";
+    wpo.onclick = () => { closeSheet(); const wb = $("wpBtnChat"); if (wb) wb.click(); else toast("Wallpaper is not ready. Close and open Jolt again."); };
+    const cco = mk("button", "opt", "🖍 Chat colors"); cco.type = "button";
+    cco.onclick = openColors;
+    box.appendChild(wpo); box.appendChild(cco);
     if (cx.kind === "dm") {
       const on = disOn(cx.id, cx.cdata);
       const d = mk("button", "opt", on ? "⏱ Disappearing messages: ON (tap to turn off)" : "⏱ Disappearing messages: OFF (tap to turn on)"); d.type = "button";
@@ -904,6 +1038,131 @@ const STICKERS = [
     const c = mk("button", "opt", "Close"); c.type = "button"; c.onclick = closeSheet;
     box.appendChild(c);
   };
+
+  // ---------- wallpaper colors + color picker ----------
+  // [my bubble, my text, their bubble, their text] for each wallpaper (like Messenger)
+  const WPT = {
+    web: ["#e62429", "#ffffff", "#14245e", "#ffffff"],
+    ninja: ["#ff7a1a", "#ffffff", "#2a1440", "#ffffff"],
+    fire: ["#ff4d00", "#ffffff", "#3a0f08", "#ffe9d6"],
+    ops: ["#16a34a", "#ffffff", "#0e3320", "#c8ffe0"],
+    neon: ["#ff2d95", "#ffffff", "#2b0a45", "#ffe6f5"],
+    galaxy: ["#7c3aed", "#ffffff", "#1e1b4b", "#e9e5ff"],
+    naija: ["#008751", "#ffffff", "#f1f5f1", "#0b2a1a"]
+  };
+  const colKey = "jolt_cx_cols";
+  function colorPrefs() { try { return JSON.parse(localStorage.getItem(colKey) || "{}") || {}; } catch (e) { return {}; } }
+  function applyTheme() {
+    let id = "none"; try { id = localStorage.getItem("wp") || "none"; } catch (e) {}
+    const base = WPT[id] || (id === "none" ? null : ["", "#ffffff", "rgba(0,0,0,.6)", "#ffffff"]);
+    const c = colorPrefs();
+    const set = (k, v) => { if (v) cxEl.style.setProperty(k, v); else cxEl.style.removeProperty(k); };
+    set("--cx-me-bg", c.meBg || (base && base[0]) || "");
+    set("--cx-me-tx", c.meTx || (base && base[1]) || "");
+    set("--cx-th-bg", c.thBg || (base && base[2]) || "");
+    set("--cx-th-tx", c.thTx || (base && base[3]) || "");
+    cxEl.classList.toggle("hasWp", id !== "none");
+  }
+  new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ["style"] });
+  applyTheme();
+  function openColors() {
+    const box = openSheet("🖍 Chat colors");
+    box.appendChild(mk("div", "chEmpty", "These colors show on your phone only."));
+    const rows = [["meBg", "My bubble", "#1d9bf0"], ["meTx", "My text", "#ffffff"], ["thBg", "Their bubble", "#2f3336"], ["thTx", "Their text", "#ffffff"]];
+    rows.forEach(r => {
+      const row = mk("div", "clr"); row.appendChild(mk("span", "", r[1]));
+      const inp = document.createElement("input"); inp.type = "color";
+      const cur = colorPrefs()[r[0]];
+      inp.value = /^#[0-9a-f]{6}$/i.test(cur || "") ? cur : r[2];
+      inp.oninput = () => { const p = colorPrefs(); p[r[0]] = inp.value; try { localStorage.setItem(colKey, JSON.stringify(p)); } catch (e) {} applyTheme(); };
+      row.appendChild(inp); box.appendChild(row);
+    });
+    const wb = mk("button", "opt", "🎨 Change wallpaper"); wb.type = "button";
+    wb.onclick = () => { closeSheet(); const b = $("wpBtnChat"); if (b) b.click(); };
+    const rs = mk("button", "opt", "↺ Match the wallpaper (reset my colors)"); rs.type = "button";
+    rs.onclick = () => { try { localStorage.removeItem(colKey); } catch (e) {} applyTheme(); closeSheet(); toast("Colors reset."); };
+    const x = mk("button", "opt", "Done"); x.type = "button"; x.onclick = closeSheet;
+    box.appendChild(wb); box.appendChild(rs); box.appendChild(x);
+  }
+
+  // ---------- search bar on the For You page ----------
+  (function () {
+    const home = $("tab-home"); if (!home || $("jSrch")) return;
+    const bar = mk("div"); bar.id = "jSrch";
+    bar.innerHTML = '<div class="jsIn"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/></svg><span>Search people, posts, #tags</span></div>';
+    home.insertBefore(bar, home.firstChild);
+    const pan = mk("div", "hidden"); pan.id = "jSrchP";
+    pan.innerHTML = '<div class="jsHead"><button id="jsBack" type="button" aria-label="Back">←</button><input id="jsInp" type="search" placeholder="Search people, posts, #tags" maxlength="40" autocomplete="off"></div><div id="jsRes"></div>';
+    document.body.appendChild(pan);
+    let cache = [], cacheAt = 0, loading = null, timer = null;
+    function loadPosts() {
+      if (cache.length && Date.now() - cacheAt < 90000) return Promise.resolve(cache);
+      if (loading) return loading;
+      loading = getDocs(query(collection(db, "posts"), orderBy("time", "desc"), limit(80)))
+        .then(sn => { cache = sn.docs.map(d => ({ id: d.id, ...d.data() })); cacheAt = Date.now(); loading = null; return cache; })
+        .catch(() => { loading = null; return cache; });
+      return loading;
+    }
+    function closeS() { pan.classList.add("hidden"); $("jsInp").blur(); }
+    function openS() { pan.classList.remove("hidden"); render(""); loadPosts().then(() => { if (!$("jsInp").value.trim()) render(""); }); setTimeout(() => $("jsInp").focus(), 60); }
+    bar.onclick = openS;
+    $("jsBack").onclick = closeS;
+    function goPerson(p) {
+      closeS();
+      const nav = document.querySelector('nav button[data-tab="players"]'); if (nav) nav.click();
+      const si = $("playerSearch"); if (si) { si.value = p.gameName || ""; si.dispatchEvent(new Event("input")); }
+    }
+    function goPost(p) {
+      closeS();
+      if (window.joltOpenPost) setTimeout(() => window.joltOpenPost(p.id), 150); else toast("Open this post from the feed.");
+    }
+    function render(term) {
+      const res = $("jsRes"); res.innerHTML = "";
+      if (!term) {
+        res.appendChild(mk("div", "chEmpty", "Search a name, a word in a post, or a #hashtag."));
+        const counts = {};
+        cache.forEach(p => { (String(p.text || "").match(/#[\w]+/g) || []).forEach(h => { const k = h.toLowerCase(); counts[k] = (counts[k] || 0) + 1; }); });
+        const top = Object.keys(counts).sort((a, b) => counts[b] - counts[a]).slice(0, 10);
+        if (top.length) {
+          res.appendChild(mk("div", "jsH", "Trending hashtags"));
+          const wrap = mk("div", "jsTags");
+          top.forEach(h => { const b = mk("button", "", h); b.type = "button"; b.onclick = () => { $("jsInp").value = h; run(); }; wrap.appendChild(b); });
+          res.appendChild(wrap);
+        }
+        return;
+      }
+      const t = term.toLowerCase().replace(/^@/, "");
+      const isTag = t.charAt(0) === "#";
+      const blocked = blockedSet();
+      if (!isTag) {
+        const ppl = players.filter(p => me && p.uid !== me.uid && (String(p.gameName || "").toLowerCase().includes(t) || String(p.gameUid || "").toLowerCase().includes(t))).slice(0, 6);
+        if (ppl.length) {
+          res.appendChild(mk("div", "jsH", "People"));
+          ppl.forEach(p => {
+            const row = mk("div", "jsRow"); row.appendChild(mkAv(p, p.gameName || "Player", true, true));
+            const mid = mk("div", "jsMid"); mid.appendChild(mk("b", "", p.gameName || "Player")); mid.appendChild(mk("span", "", isOn(p) ? "Online" : "Offline"));
+            row.appendChild(mid); row.onclick = () => goPerson(p); res.appendChild(row);
+          });
+        }
+      }
+      const found = cache.filter(p => !p.bot && !blocked.has(p.uid) && (String(p.text || "").toLowerCase().includes(t) || (!isTag && String(p.name || "").toLowerCase().includes(t)))).slice(0, 20);
+      res.appendChild(mk("div", "jsH", "Posts"));
+      if (!cache.length && loading) res.appendChild(mk("div", "chEmpty", "Searching posts..."));
+      else if (!found.length) res.appendChild(mk("div", "chEmpty", "No posts found for that."));
+      found.forEach(p => {
+        const row = mk("div", "jsRow");
+        if (p.img && String(p.img).indexOf("data:image/") === 0) { const im = mk("img"); im.loading = "lazy"; im.src = p.img; row.appendChild(im); }
+        const mid = mk("div", "jsMid"); mid.appendChild(mk("b", "", p.name || "Player")); mid.appendChild(mk("span", "", String(p.text || "").slice(0, 120) || "📷 Photo"));
+        row.appendChild(mid); row.onclick = () => goPost(p); res.appendChild(row);
+      });
+    }
+    function run() {
+      const v = $("jsInp").value.trim();
+      render(v);
+      if (v) loadPosts().then(() => { if ($("jsInp").value.trim() === v) render(v); });
+    }
+    $("jsInp").addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(run, 250); });
+  })();
 
   // ---------- data ----------
   function stopAll() {
