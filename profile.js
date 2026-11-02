@@ -29,7 +29,6 @@ try { muted = localStorage.getItem("jmute") === "1"; } catch (e) {}
 const isOwner = () => !!(me && me.email && me.email.toLowerCase() === OWNER_EMAIL);
 const myProf = () => players.find(p => me && p.uid === me.uid);
 const myName = () => { const p = myProf(); return p ? p.gameName : (isOwner() ? "Jeffrey Nwokoleme" : "Player"); };
-const isBotUid = uid => players.some(x => x.uid === uid && x.isBot);
 const followingOf = p => (p && p.following) || [];
 // ---- privacy: who may see whose posts ----
 const friendSet = () => { const s = new Set(); if (!me) return s; reqs.forEach(r => { if (r.status === "accepted") { const o = (r.participants || []).find(u => u !== me.uid); if (o) s.add(o); } }); return s; };
@@ -65,7 +64,6 @@ function avEl(uid, name, big) {
 function nameEl(name, uid) {
   const b = mk("b", "", name || "Player");
   if (uid && uid === ownerUid) b.appendChild(mk("span", "badge", "👑 OWNER"));
-  else if (uid && isBotUid(uid)) b.appendChild(mk("span", "badge", "🤖 BOT"));
   return b;
 }
 
@@ -524,7 +522,6 @@ document.addEventListener("click", () => document.querySelectorAll(".pmenu").for
 
 // ---------- "New posts" button: new posts wait while you scroll, tap to see them ----------
 let knownIds = new Set(), heldIds = new Set(), firstPosts = true;
-function feedOk(p) { return p.uid !== me.uid && !postsHidden(p.uid) && (circle().has(p.uid) || p.uid === ownerUid || isBotUid(p.uid)); }
 function updateNewBtn() {
   const b = $("jNew"); if (!b || !me) return;
   const ok = circle();
@@ -1073,100 +1070,6 @@ function addShareBtn() {
   mi.parentNode.insertBefore(b, mi);
 }
 
-
-// ---------- bot studio (owner only): bots always show the 🤖 BOT tag ----------
-const bcss = document.createElement("style");
-bcss.textContent = `
-#jbs{position:fixed;inset:0;z-index:10002;background:rgba(0,0,0,.6);display:flex;align-items:flex-end}
-#jbs.hidden{display:none}
-#jbs .jbb{width:100%;max-width:560px;margin:0 auto;max-height:90vh;overflow-y:auto;background:var(--card);color:var(--tx);border-radius:20px 20px 0 0;padding:16px}
-#jbs .jbh{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-#jbs .jbh b{font-size:19px}
-#jbs .jbh button{width:auto;margin:0;background:none;border:none;color:var(--tx);font-size:20px}
-#jbList{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 12px}
-#jbList span{padding:8px 14px;border-radius:18px;background:var(--inp);cursor:pointer;font-size:14px}
-#jbList span.on{background:var(--ac,#1d9bf0);color:#fff}
-#jbs textarea,#jbs input,#jbs select{width:100%;box-sizing:border-box;margin:6px 0}
-`;
-document.head.appendChild(bcss);
-let botSel = "";
-const myBots = () => players.filter(x => x.isBot);
-function buildBotStudio() {
-  if ($("jbs")) return;
-  const v = mk("div", "hidden"); v.id = "jbs";
-  v.innerHTML = '<div class="jbb"><div class="jbh"><b>🤖 Bot studio</b><button type="button" id="jbX">✕</button></div>'
-    + '<div class="mut">Your bots. Every bot shows a 🤖 BOT tag.</div><div id="jbList"></div>'
-    + '<input id="jbName" maxlength="24" placeholder="New bot name"><button type="button" class="green" id="jbMake">Create bot</button>'
-    + '<textarea id="jbText" maxlength="500" rows="3" placeholder="Write a post for the chosen bot"></textarea>'
-    + '<select id="jbCat"><option value="fun">😂 Fun</option><option value="gaming">🎮 Gaming</option><option value="lifestyle">🌍 Lifestyle</option></select>'
-    + '<button type="button" class="green" id="jbPost">Post as bot</button>'
-    + '<button type="button" class="ghost" id="jbDel">Delete chosen bot</button><div class="mut" id="jbMsg"></div></div>';
-  document.body.appendChild(v);
-  v.onclick = e => { if (e.target === v) v.classList.add("hidden"); };
-  $("jbX").onclick = () => v.classList.add("hidden");
-  $("jbMake").onclick = makeBot;
-  $("jbPost").onclick = botPost;
-  $("jbDel").onclick = delBot;
-}
-function drawBotStudio() {
-  const l = $("jbList"); if (!l) return; l.innerHTML = "";
-  const bots = myBots();
-  if (botSel && !bots.some(b => b.uid === botSel)) botSel = "";
-  if (!botSel && bots.length) botSel = bots[0].uid;
-  if (!bots.length) l.appendChild(mk("div", "mut", "No bots yet. Create one below."));
-  bots.forEach(b => {
-    const c = mk("span", b.uid === botSel ? "on" : "", "🤖 " + (b.gameName || "Bot"));
-    c.onclick = () => { botSel = b.uid; drawBotStudio(); };
-    l.appendChild(c);
-  });
-}
-function openBotStudio() {
-  if (!isOwner()) return;
-  buildBotStudio(); drawBotStudio();
-  $("jbMsg").textContent = "";
-  $("jbs").classList.remove("hidden");
-}
-async function makeBot() {
-  const msg = $("jbMsg"), name = $("jbName").value.trim();
-  if (!name) { msg.textContent = "Type a name for the bot."; return; }
-  if (players.some(x => String(x.gameName || "").toLowerCase() === name.toLowerCase())) { msg.textContent = "That name is already used."; return; }
-  const uid = "bot_" + Date.now();
-  try {
-    await setDoc(doc(db, "players", uid), { uid: uid, gameName: name, game: "Bot", isBot: true, owner: me.uid, lastSeen: 0, following: [] });
-    botSel = uid; $("jbName").value = ""; msg.textContent = "Bot created ✅"; drawBotStudio();
-  } catch (e) { msg.textContent = "Could not create the bot. The Firebase rules need an update."; }
-}
-async function botPost() {
-  const msg = $("jbMsg"), text = $("jbText").value.trim();
-  const b = players.find(x => x.uid === botSel && x.isBot);
-  if (!b) { msg.textContent = "Choose or create a bot first."; return; }
-  if (!text) { msg.textContent = "Write the post first."; return; }
-  const btn = $("jbPost"); btn.disabled = true; msg.textContent = "Posting...";
-  try {
-    const ref = await addDoc(collection(db, "posts"), {
-      uid: b.uid, name: b.gameName, text: text, img: "", imgs: [], bg: COLORS[Math.floor(Math.random() * (COLORS.length - 1))],
-      video: "", vthumb: "", category: $("jbCat").value, music: "", time: serverTimestamp(), likes: [], fires: [], commentCount: 0
-    });
-    $("jbText").value = ""; msg.textContent = "Posted ✅";
-  } catch (e) { msg.textContent = "Could not post. The Firebase rules need an update."; }
-  btn.disabled = false;
-}
-async function delBot() {
-  const b = players.find(x => x.uid === botSel && x.isBot); if (!b) return;
-  if (!confirm("Delete " + (b.gameName || "this bot") + "?")) return;
-  try { await deleteDoc(doc(db, "players", b.uid)); botSel = ""; $("jbMsg").textContent = "Deleted."; drawBotStudio(); }
-  catch (e) { $("jbMsg").textContent = "Could not delete."; }
-}
-function addBotBtn() {
-  if (!isOwner() || $("mBotStudio")) return;
-  const mi = $("mInstall"); if (!mi || !mi.parentNode) return;
-  const b = document.createElement("button");
-  b.id = "mBotStudio"; b.type = "button"; b.className = mi.className.replace("hidden", "").trim();
-  b.textContent = "🤖 Bot studio";
-  b.onclick = () => { const m = $("menuModal"); if (m) m.classList.add("hidden"); openBotStudio(); };
-  mi.parentNode.insertBefore(b, mi);
-}
-
 function stat(n, label) { const d = mk("div"); d.appendChild(mk("b", "", String(n))); d.appendChild(mk("span", "", label)); return d; }
 function tile(x) {
   const imgs = imgsOf(x);
@@ -1195,7 +1098,7 @@ function buildProfile(box, p, isMe, actsNode) {
     mb.onclick = () => {
       const m = $("menuModal"); if (!m) return;
       const mi = $("mInstall"), mo = $("mOwner");
-      addShareBtn(); addBotBtn();
+      addShareBtn();
       if (mi && $("installBtn")) mi.classList.toggle("hidden", $("installBtn").classList.contains("hidden"));
       if (mo && $("ownerInboxBtn")) mo.classList.toggle("hidden", $("ownerInboxBtn").classList.contains("hidden"));
       if ($("mHelpBox")) $("mHelpBox").classList.add("hidden");
