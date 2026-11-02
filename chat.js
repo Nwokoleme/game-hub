@@ -5,7 +5,8 @@
    New in v2: emoji, stickers (built-in + your own pictures), photos, voice notes,
    message reactions, copy, delete, share a post to a chat, block and report.
    v2.1: bold text (tap B, or type *text*).
-   v3: wallpaper colors + chat color picker, WhatsApp-style voice notes, search bar on For You. */
+   v3: wallpaper colors + chat color picker, WhatsApp-style voice notes, search bar on For You.
+   v3.1: search bar inside Messages (filters chats by name). */
 import { getApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, getDocs, doc, setDoc, updateDoc, addDoc, deleteDoc, collection, query, where, orderBy, limit, onSnapshot, serverTimestamp, arrayRemove, arrayUnion, deleteField } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -44,6 +45,7 @@ const STICKERS = [
 #tab-friends>.card{display:none!important}
 #quickJux{display:none!important}
 #chatHub{padding:4px 0 90px}
+#hubQ{display:block;width:100%;box-sizing:border-box;margin:2px 0 8px;border-radius:24px;padding:11px 18px}
 .chHead{display:flex;align-items:center;justify-content:space-between;padding:10px 2px}
 .chHead h2{margin:0;font-size:24px}
 .chBtns{display:flex;gap:8px;padding:0 0 10px}
@@ -174,6 +176,12 @@ const STICKERS = [
   const tabF = $("tab-friends");
   if (!tabF) return;
   tabF.appendChild(hub);
+  const hubTop = mk("div"), hubSrch = mk("div"), hubList = mk("div");
+  hub.appendChild(hubTop); hub.appendChild(hubSrch); hub.appendChild(hubList);
+  const hubQ = document.createElement("input");
+  hubQ.id = "hubQ"; hubQ.type = "search"; hubQ.placeholder = "Search"; hubQ.maxLength = 40; hubQ.autocomplete = "off";
+  hubSrch.appendChild(hubQ);
+  hubQ.addEventListener("input", () => renderHub());
 
   const cxEl = mk("div", "hidden"); cxEl.id = "cx";
   cxEl.innerHTML = '<div class="cxHead"><button id="cxBack" type="button" aria-label="Back">←</button><div id="cxAv"></div><div class="cxT"><b id="cxTitle"></b><span id="cxSub"></span></div><button id="cxMenu" type="button" aria-label="Options">⋯</button></div>' +
@@ -328,10 +336,10 @@ const STICKERS = [
 
   function renderHub() {
     if (!me) return;
-    hub.innerHTML = "";
+    hubTop.innerHTML = ""; hubList.innerHTML = "";
     const head = mk("div", "chHead");
     head.appendChild(mk("h2", "", "Messages"));
-    hub.appendChild(head);
+    hubTop.appendChild(head);
 
     const bar = mk("div", "chBtns");
     const rb = mk("button", "ghost", "📩 Requests");
@@ -343,7 +351,7 @@ const STICKERS = [
     gb.type = "button";
     gb.onclick = openNewGroup;
     bar.appendChild(rb); bar.appendChild(gb);
-    hub.appendChild(bar);
+    hubTop.appendChild(bar);
 
     // Jux row (like Meta AI inside chats)
     const jr = mk("div", "chRow");
@@ -354,7 +362,8 @@ const STICKERS = [
     jm.appendChild(mk("span", "", "Ask me anything"));
     jr.appendChild(jm);
     jr.onclick = () => { const b = $("quickJux"); if (b) b.click(); };
-    hub.appendChild(jr);
+    const term = hubQ.value.trim().toLowerCase();
+    if (!term || "jux ai".includes(term)) hubList.appendChild(jr);
 
     const blocked = blockedSet();
     const items = [];
@@ -371,11 +380,14 @@ const STICKERS = [
       items.push({ kind: "dm", id: id, ou: ou, last: last, arr: arr, ms: last ? msOf(last) : 0 });
     });
     items.sort((a, b) => b.ms - a.ms);
+    const shown = term ? items.filter(it => String(it.kind === "group" ? (it.g.name || "Group") : nameOf(it.ou)).toLowerCase().includes(term)) : items;
 
     if (!items.length) {
-      hub.appendChild(mk("div", "chEmpty", "No chats yet. Find people in Search, send a friend request, or tap New group."));
+      hubList.appendChild(mk("div", "chEmpty", "No chats yet. Find people in Search, send a friend request, or tap New group."));
+    } else if (term && !shown.length && !"jux ai".includes(term)) {
+      hubList.appendChild(mk("div", "chEmpty", "No chats found for that name."));
     }
-    items.forEach(it => {
+    shown.forEach(it => {
       const row = mk("div", "chRow");
       const mid = mk("div", "chMid");
       if (it.kind === "group") {
@@ -401,7 +413,7 @@ const STICKERS = [
         if (it.ms) row.appendChild(mk("div", "chTime", timeLabel(it.ms)));
         row.onclick = () => openChat({ kind: "dm", id: it.id, title: nameOf(it.ou), other: it.ou });
       }
-      hub.appendChild(row);
+      hubList.appendChild(row);
     });
   }
 
@@ -1171,7 +1183,7 @@ const STICKERS = [
     lastUnsubs = {}; lastMsgs = {};
     if (cx) closeChat(true);
     players = []; reqs = {}; groups = []; myP = null; me = null;
-    hub.innerHTML = "";
+    hubTop.innerHTML = ""; hubList.innerHTML = ""; hubQ.value = "";
   }
   onAuthStateChanged(auth, user => {
     stopAll();
